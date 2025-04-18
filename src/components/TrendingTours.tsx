@@ -1,8 +1,8 @@
 import React from 'react';
-import { Star, MapPin } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; 
+import { Star, MapPin, Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useFavorites } from '../context/FavoritesContext';
 
-// Define an interface for the tour object
 interface Tour {
   id: number;
   title: string;
@@ -11,7 +11,7 @@ interface Tour {
   rating: number;
   price: number;
   companyName: string;
-  companyLogo: string; 
+  companyLogo: string;
   availableSeats: number;
 }
 
@@ -25,7 +25,7 @@ const tours: Tour[] = [
     price: 1990,
     companyName: 'Adventure Co.',
     companyLogo: 'https://example.com/adventure-co-logo.png',
-    availableSeats: 10, 
+    availableSeats: 10,
   },
   {
     id: 2,
@@ -53,9 +53,9 @@ const tours: Tour[] = [
 
 const TrendingTours = () => {
   const navigate = useNavigate();
+  const { toggleFavorite, isFavorite } = useFavorites();
 
   const handleBookNow = (tour: Tour) => {
-    
     navigate('/payment', {
       state: {
         title: tour.title,
@@ -66,7 +66,6 @@ const TrendingTours = () => {
   };
 
   const handleSeeDetails = (tour: Tour) => {
-   
     navigate('/travel-with-us', {
       state: {
         tour,
@@ -84,7 +83,29 @@ const TrendingTours = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {tours.map((tour) => (
-            <div key={tour.id} className="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div key={tour.id} className="bg-white rounded-lg shadow-lg overflow-hidden relative">
+              <button
+                onClick={() => toggleFavorite({
+                  id: tour.id,
+                  title: tour.title,
+                  image: tour.image,
+                  companyName: tour.companyName,
+                  price: tour.price,
+                  location: tour.location
+                })}
+                className="absolute top-4 left-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm"
+                aria-label={isFavorite(tour.id) ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                <Heart
+                  size={20}
+                  className={
+                    isFavorite(tour.id)
+                      ? 'text-red-500 fill-current'
+                      : 'text-gray-400 hover:text-red-500'
+                  }
+                />
+              </button>
+
               <div className="relative">
                 <img
                   src={tour.image}
@@ -110,13 +131,13 @@ const TrendingTours = () => {
                 <div className="flex space-x-4">
                   <button
                     className="w-1/2 bg-orange-500 text-white py-2 rounded-md hover:bg-orange-600 transition-colors"
-                    onClick={() => handleBookNow(tour)} // Pass tour data to handleBookNow
+                    onClick={() => handleBookNow(tour)}
                   >
                     Book Now
                   </button>
                   <button
                     className="w-1/2 bg-gray-200 text-gray-700 py-2 rounded-md hover:bg-gray-300 transition-colors"
-                    onClick={() => handleSeeDetails(tour)} // Pass tour data to handleSeeDetails
+                    onClick={() => handleSeeDetails(tour)}
                   >
                     See Details
                   </button>

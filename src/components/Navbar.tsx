@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom'; // Import Link and useLocation
-import { Menu, X } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, X, Heart } from 'lucide-react';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -16,12 +16,25 @@ const Navbar = () => {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
-           
+            
             <NavLink to="/about" active={location.pathname === "/about"}>About</NavLink>
             <NavLink to="/services" active={location.pathname === "/services"}>Services</NavLink>
+            <NavLink to="/travels" active={location.pathname === "/travels"}>Travels</NavLink>
+            <NavLink to="/companies" active={location.pathname === "/companies"}>Companies</NavLink>
+            <NavLink to="/events" active={location.pathname === "/events"}>Events</NavLink>
             <NavLink to="/packages" active={location.pathname === "/packages"}>Upcoming Packages</NavLink>
-            <NavLink to="/contactus" active={location.pathname === "/contactus"}>Contact Us</NavLink>
-            <NavLink to="/getintouch" active={location.pathname === "/getintouch"}>Get in Touch</NavLink>
+            
+            {/* Favorite Link with Heart Icon */}
+            <Link
+              to="/favorites"
+              className={`flex items-center text-sm font-medium ${
+                location.pathname === "/favorites" ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'
+              }`}
+            >
+              <Heart size={18} className="mr-1" />
+              Favorites
+            </Link>
+            
             <Link
               to="/signup"
               className="bg-orange-500 text-white px-6 py-2 rounded-md hover:bg-orange-600"
@@ -35,6 +48,7 @@ const Navbar = () => {
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="text-gray-700"
+              aria-label="Toggle menu"
             >
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
@@ -44,14 +58,34 @@ const Navbar = () => {
 
       {/* Mobile Menu */}
       {isMenuOpen && (
-        <div className="md:hidden">
+        <div className="md:hidden bg-white pb-4">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-            
+            <MobileNavLink to="/" active={location.pathname === "/"}>Home</MobileNavLink>
             <MobileNavLink to="/about" active={location.pathname === "/about"}>About</MobileNavLink>
             <MobileNavLink to="/services" active={location.pathname === "/services"}>Services</MobileNavLink>
-            <MobileNavLink to="/packages" active={location.pathname === "/packages"}>Upcoming Packages</MobileNavLink>
-            <MobileNavLink to="/contact" active={location.pathname === "/contact"}>Get in Touch</MobileNavLink>
-            {/* Link to SignUp page */}
+            <MobileNavLink to="/travels" active={location.pathname === "/travels"}>Travels</MobileNavLink>
+            <MobileNavLink to="/companies" active={location.pathname === "/companies"}>Companies</MobileNavLink>
+            <MobileNavLink to="/events" active={location.pathname === "/events"}>Events</MobileNavLink>
+            
+            
+            {/* Mobile Favorite Link with Heart Icon */}
+            <Link
+              to="/favorites"
+              className={`flex items-center px-3 py-2 rounded-md text-base font-medium ${
+                location.pathname === "/favorites" ? 'text-orange-500' : 'text-gray-700 hover:text-orange-500'
+              }`}
+            >
+              <Heart size={18} className="mr-2" />
+              Favorites
+            </Link>
+            
+            <Link
+              to="/getintouch"
+              className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-orange-500"
+            >
+              Get in Touch
+            </Link>
+            
             <Link
               to="/signup"
               className="w-full text-left px-3 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"

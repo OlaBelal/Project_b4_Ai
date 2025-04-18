@@ -12,29 +12,42 @@ import ContactUsForm from './pages/ContactUsForm';
 import GetInTouch from './pages/GetInTouch';
 import CompaniesPage from './pages/CompaniesPage';
 import PaymentPage from './pages/PaymentPage';
+import Favorites from './pages/Favorites'; // Add this import
+import { FavoritesProvider } from './context/FavoritesContext';
+import Partners from './components/Partners';
+import Travels from './pages/Travels';
+import Companies from './pages/Companies';
+import Events from './pages/Events';
+
 function App() {
   return (
-    <Router>
-      <div className="relative min-h-screen">
-        <Navbar />
-        <main className="pb-[70px]">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/travel-with-us" element={<TravelWithUs />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/login" element={<LogIn />} />
-            <Route path='/contactus' element={<ContactUsForm/>}/>
-            <Route path='/GetInTouch' element={< GetInTouch/>}/>
-            <Route path='/CompaniesPag' element={<CompaniesPage/>}/>
-            <Route path="/payment" element={<PaymentPage />} />
-            
-      
-          </Routes>
-        </main>
-        <Footer />
-      </div>
-    </Router>
+    <FavoritesProvider> {/* Wrap the entire app with FavoritesProvider */}
+      <Router>
+        <div className="relative min-h-screen">
+          <Navbar />
+          <main className="pb-[70px]">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/services" element={<Services />} />
+              <Route path="/travel-with-us" element={<TravelWithUs />} />
+              <Route path="/signup" element={<SignUp />} />
+              <Route path="/login" element={<LogIn />} />
+              <Route path='/contactus' element={<ContactUsForm/>}/>
+              <Route path='/GetInTouch' element={<GetInTouch/>}/>
+              <Route path='/CompaniesPag' element={<CompaniesPage/>}/>
+              <Route path="/payment" element={<PaymentPage />} />
+              <Route path="/favorites" element={<Favorites />} />
+              <Route path="/companies/:companyId" element={<CompaniesPage />} />
+              <Route path="/partners" element={<Partners />} />
+              <Route path="/travels" element={<Travels />} />
+            <Route path="/companies" element={<Companies />} />
+            <Route path="/events" element={<Events />} />
+            </Routes>
+          </main>
+          <Footer />
+        </div>
+      </Router>
+    </FavoritesProvider>
   );
 }
 

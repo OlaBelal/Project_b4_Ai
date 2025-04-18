@@ -54,15 +54,7 @@ const TabReviews: React.FC<TabReviewsProps> = ({ reviews, setReviews }) => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-4xl font-bold text-[#DF6951]">Customer Reviews ({reviews.length})</h2>
-        <button
-          onClick={() => setShowReviewForm(!showReviewForm)}
-          className="bg-[#DF6951] text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors"
-        >
-          {showReviewForm ? 'Cancel' : 'Add Your Review'}
-        </button>
-      </div>
+      <h2 className="text-4xl font-bold text-[#DF6951] mb-6">Customer Reviews ({reviews.length})</h2>
 
       {/* Review Form - Conditionally shown */}
       {showReviewForm && (

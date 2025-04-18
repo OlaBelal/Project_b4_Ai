@@ -14,14 +14,17 @@ const GetInTouch = () => {
     whatsapp: '',
     email: '',
     companyAddress: '',
+    companyDiscription:'',
     contactPersonName: '',
     contactEmail: '',
     contactPersonNumber: '',
     typeOfType: '',
-    keyDestinations: '', // Added missing property
+    keyDestinations: '', 
     specialActivities: '',
     additionalDocument: '',
-    websiteURL: '', // Added missing property
+    websiteURL: '', 
+    LogoURl:'',
+    coverImageURL:'',
     acceptTerms: false,
   });
 
@@ -145,6 +148,32 @@ const GetInTouch = () => {
                 className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
               />
             </div>
+            
+          </div>
+          <div className="flex flex-col md:flex-row gap-5 mb-5">
+            <div className="flex-1">
+              <label>Logo URl <span className="text-red-500">*</span></label>
+              <input
+                type="text"
+                name="LogoURl"
+                value={formData.LogoURl}
+                onChange={handleChange}
+                placeholder="e.g., +1234567890"
+                className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
+              />
+            </div>
+            <div className="flex-1">
+              <label>Cover Image URL<span className="text-red-500">*</span></label>
+              <input
+                type="text"
+                name="coverImageURL"
+                value={formData.coverImageURL}
+                onChange={handleChange}
+                placeholder="e.g., www.abccorp.com"
+                className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
+              />
+            </div>
+            
           </div>
 
           {/* Company Address */}
@@ -158,6 +187,17 @@ const GetInTouch = () => {
               placeholder="e.g., 123 Main St, City, Country"
               className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
             />
+            <div className="flex-1 mb-5 mt-5">
+              <label>Discription  <span className="text-red-500">*</span></label>
+              <input
+                type="text"
+                name="Discription"
+                value={formData.companyDiscription}
+                onChange={handleChange}
+                placeholder="e.g., Explor the worled"
+                className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
+              />
+            </div>
           </div>
 
           {/* Contact Person Details */}
@@ -254,10 +294,9 @@ const GetInTouch = () => {
             <div className="flex-1 bg-gray-100 p-5 rounded-md">
               <p className="font-bold mb-3">By Submitting the Form, You Agree To:</p>
               <ul className="list-disc pl-5">
-                <li>Present Accounts of the 1st Course Nomination.</li>
-                <li>Before written as Description and Release Customer Composition Propriety.</li>
-                <li>Some We work on Your Code and The Details for Promotion.</li>
-                <li>Completion of All Application to your own Website Project.</li>
+                <li>Provide Company Official Registration and Valid Travel Operation License.</li>
+                <li>Ensure Website or Social Platform is Active for Collaborative Display Purposes.</li>
+                <li>Confirm Agreement to Share and Feature Content on Our Tourism Platform.</li>
               </ul>
               <div className="mt-3 text-[#2642a8]">
                 <label className="flex items-center">
