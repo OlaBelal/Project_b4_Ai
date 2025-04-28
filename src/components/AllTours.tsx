@@ -10,7 +10,7 @@ import { fetchTours } from '../services/travelService';
 import { Tour } from '../types';
 import { API_BASE_URL } from '../services/apiConfig';
 
-const TrendingTours = () => {
+const AllTours = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toggleFavorite, isFavorite } = useFavorites();
@@ -166,7 +166,7 @@ const TrendingTours = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {tours.slice(0, 3).map((tour) => (
+            {tours.map((tour) => (
               <div key={tour.id} className="bg-white rounded-lg shadow-lg overflow-hidden relative">
                 <button
                   onClick={() => handleFavorite(tour)}
@@ -241,4 +241,4 @@ const TrendingTours = () => {
   );
 };
 
-export default TrendingTours;
+export default AllTours;

@@ -1,11 +1,10 @@
+// src/pages/SignUp.tsx
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Assuming you're using React Router for navigation
-
-// Import the images
+import { useNavigate } from "react-router-dom";
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import travelImage from "../assets/images/image 1.png";
-import googleLogo from "../assets/images/google.webp";
+import { authService } from "../services/authService";
 
-// Define interfaces for form data and errors
 interface FormData {
   name: string;
   email: string;
@@ -29,19 +28,14 @@ const SignUp = () => {
     password: "",
     confirmPassword: "",
   });
+  
   const [errors, setErrors] = useState<Errors>({});
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  // Redirect to the login page
   const handleLoginRedirect = () => {
     navigate("/login");
   };
 
-  // Handle Google sign-up logic
-  const handleGoogleSignUp = () => {
-    console.log("Sign up with Google");
-  };
-
-  // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({
@@ -50,14 +44,6 @@ const SignUp = () => {
     });
   };
 
-  // Validate password strength
-  const validatePassword = (password: string): boolean => {
-    const hasLetter = /[a-zA-Z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-    return password.length >= 8 && hasLetter && hasNumber;
-  };
-
-  // Validate the entire form
   const validateForm = (): boolean => {
     const newErrors: Errors = {};
 
@@ -65,7 +51,7 @@ const SignUp = () => {
     if (!formData.email) newErrors.email = "Email is required";
     if (!formData.password) {
       newErrors.password = "Password is required";
-    } else if (!validatePassword(formData.password)) {
+    } else if (!authService.validatePassword(formData.password)) {
       newErrors.password =
         "Password must be at least 8 characters long and include both letters and numbers.";
     }
@@ -78,11 +64,21 @@ const SignUp = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setApiError(null);
+    
     if (validateForm()) {
-      console.log("Form submitted:", formData);
+      try {
+        await authService.register({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password
+        });
+        navigate("/dashboard");
+      } catch (error: any) {
+        setApiError(error.message || "Registration failed");
+      }
     }
   };
 
@@ -91,7 +87,7 @@ const SignUp = () => {
       {/* Left Half: Image */}
       <div className="flex-1 flex justify-center items-center bg-white">
         <img
-          src={travelImage} // Use the imported image
+          src={travelImage}
           alt="Travel"
           className="max-w-full max-h-full object-cover"
         />
@@ -99,18 +95,20 @@ const SignUp = () => {
 
       {/* Right Half: Form */}
       <div className="flex-1 flex flex-col justify-center items-center bg-white pt-8">
-        {/* Apply Yesteryear font to "Sign Up" */}
-        <h1 className="text-center  mb-2 font-yesteryear text-5xl text-[#DF6951] ">
+        <h1 className="text-center mb-2 font-yesteryear text-5xl text-[#DF6951]">
           Sign Up
         </h1>
-        {/* Apply Volkhov font to "Pack your bags and explore the world!" */}
         <p className="text-center mb-5 text-gray-600 text-lg font-volkhov">
           Pack your bags and explore the world!
         </p>
-        <form
-          className="w-full max-w-[450px]"
-          onSubmit={handleSubmit}
-        >
+        
+        {apiError && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+            {apiError}
+          </div>
+        )}
+        
+        <form className="w-full max-w-[450px]" onSubmit={handleSubmit}>
           {/* Name Field */}
           <div className="mb-4">
             <label htmlFor="name" className="block mb-2">
@@ -190,18 +188,22 @@ const SignUp = () => {
           </button>
 
           {/* Google Sign Up Button */}
-          <button
-            type="button"
-            onClick={handleGoogleSignUp}
-            className="w-full py-2 bg-white text-gray-700 border border-gray-300 rounded-lg shadow-md flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors mb-4"
-          >
-            <img
-              src={googleLogo} // Use the imported image
-              alt="Google Logo"
-              className="w-7 h-7"
-            />
-            Sign up with Google
-          </button>
+          <div className="mb-4 w-full">
+            <GoogleOAuthProvider clientId="YOUR_GOOGLE_CLIENT_ID">
+              <GoogleLogin
+                onSuccess={credentialResponse => {
+                  console.log("Google SignUp Success:", credentialResponse);
+                  navigate("/dashboard");
+                }}
+                onError={() => {
+                  console.log("Google SignUp Failed");
+                }}
+                width="100%"
+                size="large"
+                text="signup_with"
+              />
+            </GoogleOAuthProvider>
+          </div>
 
           {/* Login Redirect */}
           <p className="text-center text-gray-600 text-sm">

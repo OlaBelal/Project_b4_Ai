@@ -1,11 +1,10 @@
+// src/pages/LogIn.tsx
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom"; // Assuming you're using React Router for navigation
-
-
+import { useNavigate } from "react-router-dom";
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import travelImage2 from "../assets/images/loginbag.jpg";
-import googleLogo from "../assets/images/google.webp"; 
+import { authService } from "../services/authService";
 
-// Define the Errors type
 interface Errors {
   email?: string;
   password?: string;
@@ -17,24 +16,28 @@ const LogIn = () => {
     email: "",
     password: "",
   });
-  const [errors, setErrors] = useState<Errors>({}); // Apply the Errors type
+  
+  const [errors, setErrors] = useState<Errors>({});
+  const [apiError, setApiError] = useState<string | null>(null);
 
-  // Redirect to the Sign Up page
   const handleSignUpRedirect = () => {
     navigate("/signup");
   };
 
-  // Handle Forgot Password logic
-  const handleForgotPassword = () => {
-    console.log("Forgot Password clicked");
+  const handleForgotPassword = async () => {
+    if (!formData.email) {
+      setErrors({...errors, email: "Email is required to reset password"});
+      return;
+    }
+
+    try {
+      await authService.forgotPassword(formData.email);
+      alert(`Password reset instructions sent to ${formData.email}`);
+    } catch (error: any) {
+      setApiError(error.message || "Failed to send reset instructions");
+    }
   };
 
-  // Handle Google Sign Up logic
-  const handleGoogleSignUp = () => {
-    console.log("Sign up with Google");
-  };
-
-  // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData({
@@ -43,21 +46,13 @@ const LogIn = () => {
     });
   };
 
-  // Validate password strength
-  const validatePassword = (password: string): boolean => {
-    const hasLetter = /[a-zA-Z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-    return password.length >= 8 && hasLetter && hasNumber;
-  };
-
-  // Validate the entire form
   const validateForm = (): boolean => {
-    const newErrors: Errors = {}; // Use the Errors type
+    const newErrors: Errors = {};
 
     if (!formData.email) newErrors.email = "Email is required";
     if (!formData.password) {
       newErrors.password = "Password is required";
-    } else if (!validatePassword(formData.password)) {
+    } else if (!authService.validatePassword(formData.password)) {
       newErrors.password =
         "Password must be at least 8 characters long and include both letters and numbers.";
     }
@@ -66,81 +61,50 @@ const LogIn = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setApiError(null);
+    
     if (validateForm()) {
-      console.log("Form submitted:", formData);
+      try {
+        await authService.login(formData.email, formData.password);
+        navigate("/dashboard");
+      } catch (error: any) {
+        setApiError(error.message || "Login failed");
+      }
     }
   };
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        backgroundColor: "#f5f5f5",
-      }}
-    >
+    <div className="flex h-screen bg-gray-100">
       {/* Left Half: Image */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#ffffff",
-        }}
-      >
+      <div className="flex-1 flex justify-center items-center bg-white">
         <img
           src={travelImage2}
           alt="Travel"
-          style={{
-            maxWidth: "100%",
-            maxHeight: "100%",
-            objectFit: "cover",
-          }}
+          className="max-w-full max-h-full object-cover"
         />
       </div>
 
       {/* Right Half: Form */}
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#ffffff",
-        }}
-      >
-        <h1
-          style={{
-            textAlign: "center",
-            marginBottom: "10px",
-            fontFamily: "'Yesteryear', cursive",
-            fontSize: "48px",
-            color: "#DF6951",
-          }}
-        >
+      <div className="flex-1 flex flex-col justify-center items-center bg-white">
+        <h1 className="text-center mb-2 font-yesteryear text-5xl text-[#DF6951]">
           Log In
         </h1>
-        <p style={{ textAlign: "center", marginBottom: "20px", color: "#666", fontSize: "18px", fontFamily: "Volkhov" }}>
+        <p className="text-center mb-5 text-gray-600 text-lg font-volkhov">
           Make the world your home
         </p>
-        <form
-          style={{
-            width: "100%",
-            maxWidth: "450px",
-          }}
-          onSubmit={handleSubmit}
-        >
+        
+        {apiError && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+            {apiError}
+          </div>
+        )}
+        
+        <form className="w-full max-w-[450px]" onSubmit={handleSubmit}>
           {/* Email Field */}
-          <div style={{ marginBottom: "15px" }}>
-            <label
-              htmlFor="email"
-              style={{ display: "block", marginBottom: "9px" }}
-            >
+          <div className="mb-4">
+            <label htmlFor="email" className="block mb-2">
               Email
             </label>
             <input
@@ -150,26 +114,14 @@ const LogIn = () => {
               value={formData.email}
               onChange={handleChange}
               required
-              style={{
-                width: "100%",
-                padding: "8px",
-                border: "none",
-                borderBottom: "2px solid #ccc",
-                backgroundColor: "transparent",
-                boxSizing: "border-box",
-                fontSize: "14px",
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-              }}
+              className="w-full px-2 py-2 border-b-2 border-gray-300 bg-transparent focus:outline-none focus:border-[#DF6951] shadow-sm"
             />
-            {errors.email && <p style={{ color: "red", fontSize: "12px", marginTop: "5px" }}>{errors.email}</p>}
+            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
           </div>
 
           {/* Password Field */}
-          <div style={{ marginBottom: "15px" }}>
-            <label
-              htmlFor="password"
-              style={{ display: "block", marginBottom: "9px" }}
-            >
+          <div className="mb-4">
+            <label htmlFor="password" className="block mb-2">
               Password
             </label>
             <input
@@ -179,26 +131,11 @@ const LogIn = () => {
               value={formData.password}
               onChange={handleChange}
               required
-              style={{
-                width: "100%",
-                padding: "8px",
-                border: "none",
-                borderBottom: "2px solid #ccc",
-                backgroundColor: "transparent",
-                boxSizing: "border-box",
-                fontSize: "14px",
-                boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-              }}
+              className="w-full px-2 py-2 border-b-2 border-gray-300 bg-transparent focus:outline-none focus:border-[#DF6951] shadow-sm"
             />
-            {errors.password && <p style={{ color: "red", fontSize: "12px", marginTop: "5px" }}>{errors.password}</p>}
+            {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
             <p
-              style={{
-                textAlign: "right",
-                marginTop: "10px",
-                color: "#DF6951",
-                cursor: "pointer",
-                fontSize: "15px",
-              }}
+              className="text-right mt-2 text-[#DF6951] cursor-pointer text-sm"
               onClick={handleForgotPassword}
             >
               Forgot Password?
@@ -208,62 +145,34 @@ const LogIn = () => {
           {/* Log In Button */}
           <button
             type="submit"
-            style={{
-              width: "100%",
-              padding: "10px",
-              backgroundColor: "#DF6951",
-              color: "#fff",
-              border: "none",
-              borderRadius: "5px",
-              cursor: "pointer",
-              fontSize: "22px",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-              marginBottom: "15px",
-              transition: "background-color 0.3s ease",
-            }}
-            onMouseOver={(e) => ((e.target as HTMLElement).style.backgroundColor = "#C6533E")}
-            onMouseOut={(e) => ((e.target as HTMLElement).style.backgroundColor = "#DF6951")}
+            className="w-full py-2 bg-[#DF6951] text-white rounded-lg shadow-md hover:bg-[#C6533E] transition-colors text-xl mb-4"
           >
             Log In
           </button>
 
-          {/* Google Sign Up Button */}
-          <button
-            type="button"
-            onClick={handleGoogleSignUp}
-            style={{
-              width: "100%",
-              padding: "10px",
-              backgroundColor: "#fff",
-              color: "#333",
-              border: "1px solid #ccc",
-              borderRadius: "5px",
-              cursor: "pointer",
-              fontSize: "14px",
-              boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "10px",
-              marginBottom: "15px",
-              transition: "background-color 0.3s ease",
-            }}
-            onMouseOver={(e) => ((e.target as HTMLElement).style.backgroundColor = "#f0f0f0")}
-            onMouseOut={(e) => ((e.target as HTMLElement).style.backgroundColor = "#fff")}
-          >
-            <img
-              src={googleLogo}
-              alt="Google Logo"
-              style={{ width: "30px", height: "30px" }}
-            />
-            Log in with Google
-          </button>
+          {/* Google Login Button */}
+          <div className="mb-4 w-full">
+            <GoogleOAuthProvider clientId="YOUR_GOOGLE_CLIENT_ID">
+              <GoogleLogin
+                onSuccess={credentialResponse => {
+                  console.log("Google Login Success:", credentialResponse);
+                  navigate("/dashboard");
+                }}
+                onError={() => {
+                  console.log("Google Login Failed");
+                }}
+                width="100%"
+                size="large"
+                text="continue_with"
+              />
+            </GoogleOAuthProvider>
+          </div>
 
           {/* Sign Up Redirect */}
-          <p style={{ textAlign: "center", color: "#666", fontSize: "14px" }}>
-            Don’t have an account?{" "}
+          <p className="text-center text-gray-600 text-sm">
+            Don't have an account?{" "}
             <span
-              style={{ color: "#DF6951", cursor: "pointer", fontWeight: "bold" }}
+              className="text-[#DF6951] cursor-pointer font-bold"
               onClick={handleSignUpRedirect}
             >
               Sign up!

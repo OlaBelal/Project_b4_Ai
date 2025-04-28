@@ -8,32 +8,28 @@ import type {
   CreateOrderData
 } from "@paypal/paypal-js";
 
-// Type definitions for environment variables
-interface ProcessEnv {
-  REACT_APP_PAYPAL_CLIENT_ID: string;
-}
-
-declare let process: {
-  env: ProcessEnv;
-};
-
 const PaymentPage = () => {
   const [loading, setLoading] = useState(false);
   const [paid, setPaid] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { title, price, tourLocation } = location.state || {};
+  const { title, price, tourLocation, bookingDate } = location.state || {};
 
-  // PayPal client ID with fallback
-  const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || 
-                        process.env.REACT_APP_PAYPAL_CLIENT_ID || 
-                        "YOUR_PAYPAL_CLIENT_ID";
+  // PayPal client ID - replace with your actual ID
+  const paypalClientId = "AYJ...YOUR_CLIENT_ID...DxQ";
 
   useEffect(() => {
+    console.log("Payment Page Location State:", location.state);
     if (!title || !price || !tourLocation) {
-      navigate("/payment-failed");
+      navigate("/payment-failed", {
+        state: { 
+          error: "Missing booking information",
+          redirectUrl: "/"
+        }
+      });
     }
-  }, [title, price, tourLocation, navigate]);
+  }, [title, price, tourLocation, navigate, location.state]);
 
   const createOrder = (data: CreateOrderData, actions: CreateOrderActions) => {
     return actions.order.create({
@@ -44,102 +40,154 @@ const PaymentPage = () => {
           amount: {
             value: price.toString(),
             currency_code: "USD",
+            breakdown: {
+              item_total: {
+                value: price.toString(),
+                currency_code: "USD"
+              }
+            }
           },
-        },
+          items: [
+            {
+              name: title,
+              description: `Tour to ${tourLocation}`,
+              quantity: "1",
+              unit_amount: {
+                value: price.toString(),
+                currency_code: "USD"
+              }
+            }
+          ]
+        }
       ],
+      application_context: {
+        shipping_preference: "NO_SHIPPING"
+      }
     });
   };
 
   const onApprove = async (data: OnApproveData, actions: OnApproveActions) => {
     try {
       setLoading(true);
+      setError(null);
       
-      if (!actions.order) {
-        throw new Error("Order actions not available");
-      }
-      
-      const details = await actions.order.capture();
-      
-      const response = await fetch("https://your-backend-api.com/verify-payment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          orderID: data.orderID,
-          tourDetails: {
-            title,
-            price,
-            tourLocation
-          }
-        }),
-      });
+      const details = await actions.order?.capture();
+      console.log("Payment Details:", details);
 
-      if (response.ok) {
-        setPaid(true);
-        setTimeout(() => navigate("/payment-success"), 2000);
-      } else {
-        navigate("/payment-failed");
-      }
+      // Simulate backend verification
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      setPaid(true);
+      setTimeout(() => navigate("/payment-success", {
+        state: { 
+          title, 
+          price, 
+          tourLocation,
+          bookingDate,
+          orderId: data.orderID,
+          paymentMethod: "PayPal"
+        }
+      }), 1500);
     } catch (error) {
-      console.error("Payment capture error:", error);
-      navigate("/payment-failed");
+      console.error("Payment Error:", error);
+      setError("Payment processing failed");
+      setTimeout(() => navigate("/payment-failed", {
+        state: { 
+          error: "Payment processing failed",
+          redirectUrl: "/payment",
+          retryData: { title, price, tourLocation, bookingDate }
+        }
+      }), 2000);
     } finally {
       setLoading(false);
     }
   };
 
   const onError = (err: Record<string, unknown>) => {
-    console.error("PayPal error:", err);
-    navigate("/payment-failed");
+    console.error("PayPal Error:", err);
+    setError("Payment service error");
+    navigate("/payment-failed", {
+      state: { 
+        error: "Payment service error",
+        redirectUrl: "/payment",
+        retryData: { title, price, tourLocation, bookingDate }
+      }
+    });
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 shadow-lg rounded-lg max-w-md w-full text-center">
-        <h2 className="text-2xl font-bold mb-4">Complete Your Payment</h2>
-        <p className="text-gray-600 mb-6">
-          You are booking: <span className="font-bold">{title}</span>
-        </p>
-        <p className="text-gray-600 mb-6">
-          Location: <span className="font-bold">{tourLocation}</span>
-        </p>
-        <p className="text-gray-600 mb-6">
-          Total Amount: <span className="font-bold">${price}</span>
-        </p>
-
-        {loading && (
-          <p className="text-gray-600 mb-6">Processing your payment...</p>
-        )}
-
-        {paid ? (
-          <div className="text-green-600 font-bold mb-6">
-            Payment successful! Redirecting...
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden">
+        <div className="p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl font-bold text-gray-800">Complete Payment</h1>
+            <p className="mt-2 text-gray-600">Booking: {title}</p>
           </div>
-        ) : (
-          <div className="paypal-button-container">
-            <PayPalScriptProvider 
-              options={{ 
-                clientId: paypalClientId,
-                currency: "USD",
-                intent: "capture",
-                components: "buttons",
-              }}
-            >
-              <PayPalButtons
-                style={{ 
-                  layout: "vertical",
-                  color: "gold",
-                  shape: "rect",
-                  label: "paypal"
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 rounded-lg">
+              <p className="text-red-600">{error}</p>
+            </div>
+          )}
+
+          <div className="mb-8 p-6 bg-gray-50 rounded-lg">
+            <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Tour:</span>
+                <span className="font-medium">{title}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Location:</span>
+                <span className="font-medium">{tourLocation}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Date:</span>
+                <span className="font-medium">
+                  {bookingDate ? new Date(bookingDate).toLocaleDateString() : "N/A"}
+                </span>
+              </div>
+              <div className="border-t my-3"></div>
+              <div className="flex justify-between font-bold">
+                <span>Total:</span>
+                <span>${price}</span>
+              </div>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p>Processing payment...</p>
+            </div>
+          ) : paid ? (
+            <div className="text-center py-8 text-green-600">
+              <p>Payment successful! Redirecting...</p>
+            </div>
+          ) : (
+            <div>
+              <PayPalScriptProvider 
+                options={{ 
+                  clientId: paypalClientId,
+                  currency: "USD"
                 }}
-                createOrder={createOrder}
-                onApprove={onApprove}
-                onError={onError}
-              />
-            </PayPalScriptProvider>
-          </div>
-        )}
+              >
+                <PayPalButtons
+                  style={{ layout: "vertical" }}
+                  createOrder={createOrder}
+                  onApprove={onApprove}
+                  onError={onError}
+                />
+              </PayPalScriptProvider>
+              <button
+                onClick={() => navigate(-1)}
+                className="mt-4 text-blue-600 hover:text-blue-800"
+              >
+                ← Back
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

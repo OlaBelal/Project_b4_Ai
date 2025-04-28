@@ -1,10 +1,26 @@
-import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Heart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Menu, X, Heart, User } from 'lucide-react';
+import { authService } from '../services/authService';
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    const user = authService.getCurrentUser();
+    setCurrentUser(user);
+  }, [location]);
+
+  const handleLogout = () => {
+    authService.logout();
+    setCurrentUser(null);
+    setIsProfileOpen(false);
+    navigate('/');
+  };
 
   return (
     <nav className="bg-white shadow-md fixed w-full z-50">
@@ -16,15 +32,12 @@ const Navbar = () => {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
-            
             <NavLink to="/about" active={location.pathname === "/about"}>About</NavLink>
-            <NavLink to="/services" active={location.pathname === "/services"}>Services</NavLink>
             <NavLink to="/travels" active={location.pathname === "/travels"}>Travels</NavLink>
             <NavLink to="/companies" active={location.pathname === "/companies"}>Companies</NavLink>
             <NavLink to="/events" active={location.pathname === "/events"}>Events</NavLink>
-            <NavLink to="/packages" active={location.pathname === "/packages"}>Upcoming Packages</NavLink>
+            <NavLink to="/GetInTouch" active={location.pathname === "/events"}>GetInTouch</NavLink>
             
-            {/* Favorite Link with Heart Icon */}
             <Link
               to="/favorites"
               className={`flex items-center text-sm font-medium ${
@@ -35,12 +48,42 @@ const Navbar = () => {
               Favorites
             </Link>
             
-            <Link
-              to="/signup"
-              className="bg-orange-500 text-white px-6 py-2 rounded-md hover:bg-orange-600"
-            >
-              Sign Up
-            </Link>
+            {currentUser ? (
+              <div className="relative">
+                <button 
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="flex items-center space-x-2 focus:outline-none"
+                >
+                  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                    <User size={18} className="text-orange-500" />
+                  </div>
+                  <span className="text-sm font-medium">{currentUser.name}</span>
+                </button>
+
+                {/* Profile Dropdown */}
+                {isProfileOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 border border-gray-200">
+                    <div className="px-4 py-2 border-b border-gray-100">
+                      <p className="text-sm font-medium">{currentUser.name}</p>
+                      <p className="text-xs text-gray-500">{currentUser.email}</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-orange-50"
+                    >
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link
+                to="/signup"
+                className="bg-orange-500 text-white px-6 py-2 rounded-md hover:bg-orange-600"
+              >
+                Sign Up
+              </Link>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -62,13 +105,11 @@ const Navbar = () => {
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             <MobileNavLink to="/" active={location.pathname === "/"}>Home</MobileNavLink>
             <MobileNavLink to="/about" active={location.pathname === "/about"}>About</MobileNavLink>
-            <MobileNavLink to="/services" active={location.pathname === "/services"}>Services</MobileNavLink>
+            <MobileNavLink to="/GetInTouch" active={location.pathname === "/services"}>GetInTouch</MobileNavLink>
             <MobileNavLink to="/travels" active={location.pathname === "/travels"}>Travels</MobileNavLink>
             <MobileNavLink to="/companies" active={location.pathname === "/companies"}>Companies</MobileNavLink>
             <MobileNavLink to="/events" active={location.pathname === "/events"}>Events</MobileNavLink>
             
-            
-            {/* Mobile Favorite Link with Heart Icon */}
             <Link
               to="/favorites"
               className={`flex items-center px-3 py-2 rounded-md text-base font-medium ${
@@ -86,12 +127,27 @@ const Navbar = () => {
               Get in Touch
             </Link>
             
-            <Link
-              to="/signup"
-              className="w-full text-left px-3 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-            >
-              Sign Up
-            </Link>
+            {currentUser ? (
+              <>
+                <div className="px-3 py-2">
+                  <p className="text-base font-medium">{currentUser.name}</p>
+                  <p className="text-xs text-gray-500">{currentUser.email}</p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-orange-500"
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/signup"
+                className="w-full text-left px-3 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+              >
+                Sign Up
+              </Link>
+            )}
           </div>
         </div>
       )}

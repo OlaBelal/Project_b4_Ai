@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, ChevronLeft, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { companies } from '../types';
+import { getCompanies, Company } from '../services/api';
 
 const discounts = [
   {
@@ -69,7 +69,27 @@ const Companies = () => {
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      try {
+        setLoading(true);
+        const data = await getCompanies();
+        setCompanies(data.items);
+      } catch (err) {
+        setError('Failed to fetch companies');
+        console.error('Error in fetchCompanies:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+  
+    fetchCompanies();
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -93,7 +113,7 @@ const Companies = () => {
   };
 
   const filteredCompanies = companies.filter(company => {
-    if (searchTerm && !company.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+    if (searchTerm && !company.companyName.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
     if (selectedType !== 'All' && company.type !== selectedType) {
@@ -136,6 +156,27 @@ const Companies = () => {
     setVerifiedOnly(false);
     setSearchTerm('');
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+          <strong className="font-bold">Error!</strong>
+          <span className="block sm:inline"> {error}</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -367,8 +408,8 @@ const Companies = () => {
                 {/* Image on Left */}
                 <div className="md:w-1/3 h-48 md:h-auto">
                   <img
-                    src={company.coverImage}
-                    alt={company.name}
+                    src={company.profileImageUrl || "https://via.placeholder.com/300x200"}
+                    alt={company.companyName}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -377,12 +418,12 @@ const Companies = () => {
                 <div className="p-6 md:w-2/3 flex flex-col">
                   <div className="flex items-center mb-4">
                     <img
-                      src={company.logo}
-                      alt={company.name}
+                      src={company.profileImageUrl || "https://via.placeholder.com/50"}
+                      alt={company.companyName}
                       className="w-12 h-12 rounded-full object-cover mr-4 border-2 border-white shadow-sm"
                     />
                     <div>
-                      <h3 className="text-xl font-bold">{company.name}</h3>
+                      <h3 className="text-xl font-bold">{company.companyName}</h3>
                       <div className="flex items-center">
                         {Array.from({ length: 5 }).map((_, index) => (
                           <Star
@@ -391,7 +432,7 @@ const Companies = () => {
                             className={index < Math.floor(company.rating) ? "text-yellow-400 fill-current" : "text-gray-300"}
                           />
                         ))}
-                        <span className="ml-2 text-sm text-gray-600">({company.reviews?.length || 0})</span>
+                        <span className="ml-2 text-sm text-gray-600">({company.reviewsCount || 0})</span>
                       </div>
                     </div>
                   </div>

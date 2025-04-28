@@ -6,14 +6,27 @@ import TabContent from '../components/TabContent';
 import zr3Image from '../assets/images/zr3.png';
 
 interface Tour {
-  image?: string;
-  title?: string;
-  location?: string;
+  id: number;
+  title: string;
+  description?: string;
+  price: number;
+  location: string;
+  image: string;
+  latitude?: number;
+  longitude?: number;
+  availableSeats?: number;
+  companyName?: string;
+  companyLogo?: string;
+  included?: string[];
+  excluded?: string[];
 }
 
 const TravelWithUs: React.FC = () => {
   const location = useLocation();
+  
+  // Make sure tour has all the required properties
   const tour = location.state?.tour as Tour;
+
   const [activeTab, setActiveTab] = useState<string>('Information');
 
   return (
@@ -27,12 +40,12 @@ const TravelWithUs: React.FC = () => {
         <NavigationTabs activeTab={activeTab} setActiveTab={setActiveTab} />
 
         {/* Content Based on Active Tab */}
-        <div className="pb-32"> 
+        <div className="pb-32">
           <TabContent activeTab={activeTab} tour={tour} />
         </div>
 
         {/* Image at the bottom-left corner of the container */}
-        <div className="absolute bottom-0 left-0 ">
+        <div className="absolute bottom-0 left-0">
           <img
             src={zr3Image}
             alt="ZR3"

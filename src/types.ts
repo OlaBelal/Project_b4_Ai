@@ -1,3 +1,55 @@
+
+
+// // src/types.ts
+// // src/types.ts
+// export interface Tour {
+//   id: number;
+//   title: string;
+//   name: string;
+//   destination: string;
+//   location?: string;
+//   imageUrls: string;
+//   image?: string;
+//   rating: number;
+//   price: number;
+//   companyName: string;
+//   companyLogoUrl: string;
+//   companyLogo?: string;
+//   availableSeats: number;
+//   description?: string;
+//   departureDate?: string;
+//   returnDate?: string;
+//   transport?: string;
+//   included?: string[];
+//   notIncluded?: string[];
+//   galleryImages?: { url: string }[];
+//   images?: { url: string }[];
+//   itinerary?: {
+//     day: number;
+//     title: string;
+//     description: string;
+//     activities: string[];
+//   }[];
+//   tags?: string[];
+//   duration?: string;
+//   highlights?: string[];
+//   amenities?: string[];
+//   hotelName?: string;
+//   originalPrice?: number;
+//   availableUntil?: string;
+//   reviewsCount?: number;
+//   isLimitedTime?: boolean;
+// }
+
+// export interface Review {
+//   id: number;
+//   userName: string;
+//   rating: number;
+//   comment: string;
+//   date: string;
+//   userAvatar?: string;
+//   tourId?: number;
+// }import tirhalLogo from "./assets/images/tirhalLogo.jpg";
 import tirhalLogo from "./assets/images/tirhalLogo.jpg";
 import tirhalCover from "./assets/images/Tirhalcover.jpg";
 import photo1 from "./assets/images/tirhalasewa.jpg";
@@ -14,29 +66,44 @@ import photo11 from "./assets/images/tirhaltravel4.jpg";
 import photo12 from "./assets/images/tirhaltravel5.jpg";
 
 
-
+// src/types.ts
 export interface Tour {
-  id: string;
+  id: number;
   title: string;
   description?: string;
   price: number;
-  location: string;
-  latitude?: number;
-  longitude?: number;
-  availableSeats?: number;
+  startDate: string;
+  endDate: string;
+  creationDate?: string;
+  availableSeats: number;
+  departurePoint: string;
+  departurePointLat?: number;
+  departurePointLng?: number;
+  destinationCity: string;
+  destinationCityLat?: number;
+  destinationCityLng?: number;
+  transportationType: string;
+  amenities: string[];
+  companyId?: number;
   companyName?: string;
-  companyLogo?: string;
-  included?: string[];
-  excluded?: string[];
+  companyLogo:string;
+  imageUrls: string[];
+  itineraries?: {
+    dayNumber: number;
+    activities: string[];
+  }[];
+  rating?: number;
+  // يمكن إضافة حقول أخرى حسب الحاجة
 }
 
+// في ملف types.ts
 export interface Review {
   id: number;
-  name: string;
+  name: string;  // تأكد من وجود هذه الخاصية
   rating: number;
   comment: string;
   date: string;
-  avatar?: string;
+  avatar?: string;  // علامة ? تعني أن الخاصية اختيارية
 }
 
 export interface BookingFormData {

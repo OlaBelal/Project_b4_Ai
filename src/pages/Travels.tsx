@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Star, X, MapPin, Clock, Users, CalendarDays, Utensils, Wifi, Bus } from 'lucide-react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const travels = [
   {
@@ -44,7 +44,8 @@ const travels = [
     duration: "4 days, 3 nights",
     company: "Luxury Voyages",
     groupSize: "8-12 people",
-    meals: "Breakfast included"
+    meals: "Breakfast included",
+    tags: ["Adventure", "Cultural", "Desert Safari"]
   },
   {
     id: 2,
@@ -83,7 +84,8 @@ const travels = [
     duration: "3 days, 2 nights",
     company: "Adventure Quest Tours",
     groupSize: "6-10 people",
-    meals: "Half board"
+    meals: "Half board",
+    tags: ["Beach & Sun", "Adventure"]
   },
   {
     id: 3,
@@ -135,7 +137,8 @@ const travels = [
     duration: "6 days, 5 nights",
     company: "Cultural Expeditions",
     groupSize: "10-15 people",
-    meals: "Half board"
+    meals: "Half board",
+    tags: ["Cultural", "Historical", "Luxury"]
   },
   {
     id: 4,
@@ -182,7 +185,8 @@ const travels = [
     duration: "5 days, 4 nights",
     company: "Luxury Voyages",
     groupSize: "8-12 people",
-    meals: "Breakfast included"
+    meals: "Breakfast included",
+    tags: ["Beach & Sun", "Adventure", "Diving"]
   }
 ];
 
@@ -333,28 +337,74 @@ const Travels = () => {
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
   const [company, setCompany] = useState<string | null>(null);
   const location = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    // Retrieve company from local storage or URL parameters
     const params = new URLSearchParams(location.search);
+    
+    // Handle company
     const companyParam = params.get('company');
     if (companyParam) {
       setCompany(companyParam);
     } else {
       const storedCompany = localStorage.getItem('selectedCompany');
-      if (storedCompany) {
-        setCompany(storedCompany);
-      } else {
-        console.warn('No company selected.');
-      }
+      if (storedCompany) setCompany(storedCompany);
+    }
+
+    // Handle categories
+    const categoriesParam = params.get('categories');
+    if (categoriesParam) {
+      setSelectedCategories(categoriesParam.split(','));
+    }
+
+    // Handle search term
+    const searchParam = params.get('search');
+    if (searchParam) setSearchTerm(searchParam);
+
+    // Handle price range
+    const minPrice = params.get('minPrice');
+    const maxPrice = params.get('maxPrice');
+    if (minPrice || maxPrice) {
+      setPriceRange({
+        min: minPrice || '',
+        max: maxPrice || ''
+      });
     }
   }, [location.search]);
 
+  useEffect(() => {
+    const params = new URLSearchParams();
+    
+    if (company) params.set('company', company);
+    if (searchTerm) params.set('search', searchTerm);
+    if (selectedCategories.length > 0) {
+      params.set('categories', selectedCategories.join(','));
+    }
+    if (priceRange.min) params.set('minPrice', priceRange.min);
+    if (priceRange.max) params.set('maxPrice', priceRange.max);
+
+    navigate(`?${params.toString()}`, { replace: true });
+  }, [company, searchTerm, selectedCategories, priceRange, navigate]);
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
+    );
+  };
+
+  const handlePriceRangeChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'min' | 'max') => {
+    const value = e.target.value;
+    setPriceRange(prev => ({
+      ...prev,
+      [type]: value
+    }));
+  };
+
   const filteredTravels = travels.filter(trip => {
     // Company filter
-    if (company && trip.company !== company) {
-      return false;
-    }
+    if (company && trip.company !== company) return false;
 
     // Search term filter
     if (searchTerm && !trip.title.toLowerCase().includes(searchTerm.toLowerCase())) {
@@ -362,18 +412,18 @@ const Travels = () => {
     }
 
     // Price range filter
-    if (priceRange.min && trip.price < parseInt(priceRange.min)) {
-      return false;
-    }
-    if (priceRange.max && trip.price > parseInt(priceRange.max)) {
-      return false;
-    }
+    const minPrice = priceRange.min ? parseInt(priceRange.min) : 0;
+    const maxPrice = priceRange.max ? parseInt(priceRange.max) : Infinity;
+    if (trip.price < minPrice || trip.price > maxPrice) return false;
 
-    // Categories filter
+    // Categories filter - match ANY of the selected categories
     if (selectedCategories.length > 0) {
-      const tripCategories = trip.highlights.map(h => h.toLowerCase());
+      // Check if trip has tags that match any selected category
+      if (!trip.tags) return false;
       return selectedCategories.some(cat => 
-        tripCategories.some(tripCat => tripCat.toLowerCase().includes(cat.toLowerCase()))
+        trip.tags.some((tripTag: string) => 
+          tripTag.toLowerCase().includes(cat.toLowerCase())
+        )
       );
     }
 
@@ -411,13 +461,7 @@ const Travels = () => {
                       <input
                         type="checkbox"
                         checked={selectedCategories.includes(category)}
-                        onChange={() => {
-                          setSelectedCategories(prev =>
-                            prev.includes(category)
-                              ? prev.filter(c => c !== category)
-                              : [...prev, category]
-                          );
-                        }}
+                        onChange={() => handleCategoryChange(category)}
                         className="rounded text-orange-500 focus:ring-orange-500"
                       />
                       <span className={selectedCategories.includes(category) ? "font-medium" : ""}>
@@ -444,14 +488,14 @@ const Travels = () => {
                   type="number"
                   placeholder="Min"
                   value={priceRange.min}
-                  onChange={(e) => setPriceRange(prev => ({ ...prev, min: e.target.value }))}
+                  onChange={(e) => handlePriceRangeChange(e, 'min')}
                   className="w-20 p-1 border rounded"
                 />
                 <input
                   type="number"
                   placeholder="Max"
                   value={priceRange.max}
-                  onChange={(e) => setPriceRange(prev => ({ ...prev, max: e.target.value }))}
+                  onChange={(e) => handlePriceRangeChange(e, 'max')}
                   className="w-20 p-1 border rounded"
                 />
                 <button 
@@ -512,13 +556,16 @@ const Travels = () => {
                               />
                             ))}
                           </div>
-                          <span className="ml-2 text-gray-600">• {trip.reviews}</span>
+                          <span className="ml-2 text-gray-600">• {trip.reviews} reviews</span>
                         </div>
                       </div>
                     </div>
                     
                     <div className="mb-4">
                       <span className="text-2xl font-bold text-red-600">{trip.price}EG</span>
+                      {trip.originalPrice && (
+                        <span className="ml-2 text-sm text-gray-500 line-through">{trip.originalPrice}EG</span>
+                      )}
                     </div>
                     
                     <div className="text-sm text-gray-600">
