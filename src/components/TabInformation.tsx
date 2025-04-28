@@ -42,7 +42,7 @@ const TabInformation: React.FC<TabInformationProps> = ({ tour, onCompanyNameClic
       </div>
 
       {/* Rating */}
-      {tour.rating && (
+      {/* {tour.rating && (
         <div className="flex items-center mb-4">
           <div className="flex space-x-1">
             {[1, 2, 3, 4, 5].map((star) => (
@@ -55,7 +55,7 @@ const TabInformation: React.FC<TabInformationProps> = ({ tour, onCompanyNameClic
             (No reviews yet)
           </span>
         </div>
-      )}
+      )} */}
 
       {/* Company Name and Logo */}
       {tour.companyName && (

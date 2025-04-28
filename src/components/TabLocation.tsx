@@ -12,7 +12,7 @@ const TabLocation: React.FC<{ tour: Tour }> = ({ tour }) => {
       <div className="bg-gray-200 h-96 rounded-lg overflow-hidden">
         {tour.destinationCity ? (
           <iframe
-            src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d108744.98444505!2d8.466675499999999!3d47.3774336!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47900b9749bea219%3A0xe66e8df1e71fdc03!2s${encodeLocation(tour.location)}!5e0!3m2!1sen!2sus!4v1699999999999!5m2!1sen!2sus`}
+            src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d108744.98444505!2d8.466675499999999!3d47.3774336!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47900b9749bea219%3A0xe66e8df1e71fdc03!2s${encodeLocation(tour.destinationCity)}!5e0!3m2!1sen!2sus!4v1699999999999!5m2!1sen!2sus`}
             width="100%"
             height="100%"
             style={{ border: 0 }}

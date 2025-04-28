@@ -97,6 +97,7 @@ export const fetchTourDetails = async (id: number): Promise<Tour> => {
   }
 };
 
+/*
 export const fetchTourReviews = async (tourId: number): Promise<Review[]> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/Reviews?tourId=${tourId}`);
@@ -122,4 +123,10 @@ export const fetchTourReviews = async (tourId: number): Promise<Review[]> => {
     console.error(`Error fetching reviews for tour ${tourId}:`, error);
     throw error;
   }
+};
+*/
+
+// بديل مبسط إذا كنت تريد دالة تعيد قائمة فارغة
+export const fetchTourReviews = async (tourId: number): Promise<Review[]> => {
+  return [];
 };
