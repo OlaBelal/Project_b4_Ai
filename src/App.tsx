@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -25,8 +25,12 @@ import { UserProvider } from './context/UserContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Dashboard from './pages/Dashboard';
 import { authService } from './services/authService';
-import ResetPassword from './pages/ResetPassword'
+import ResetPassword from './pages/ResetPassword';
 import AllTours from './components/AllTours';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+
+const GOOGLE_CLIENT_ID = '822773664134-n09666thqoc67ee4rhkfjetb51ep0vg5.apps.googleusercontent.com';
+
 function App() {
   useEffect(() => {
     const user = authService.getCurrentUser();
@@ -36,49 +40,52 @@ function App() {
   }, []);
 
   return (
-    <UserProvider>
-      <FavoritesProvider>
-        <Router>
-          <div className="relative min-h-screen">
-            <Navbar />
-            <main className="pt-16 pb-[70px]">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/services" element={<Services />} />
-                <Route path="/travel-with-us" element={<TravelWithUs />} />
-                <Route 
-                  path="/signup" 
-                  element={authService.isAuthenticated() ? <Navigate to="/dashboard" /> : <SignUp />} 
-                />
-                <Route 
-                  path="/login" 
-                  element={authService.isAuthenticated() ? <Navigate to="/dashboard" /> : <LogIn />} 
-                />
-                <Route path="/reset-password" element={<ResetPassword />} />
-                <Route path='/contactus' element={<ContactUsForm />} />
-                <Route path='/GetInTouch' element={<GetInTouch />} />
-                <Route path='/CompaniesPag' element={<CompaniesPage />} />
-                <Route path="/partners" element={<Partners />} />
-                <Route path="/travels" element={<Travels />} />
-                <Route path="/companies" element={<Companies />} />
-                <Route path="/events" element={<Events />} />
-                <Route path="/AllTours" element={<AllTours />} />
-                {/* الصفحات المحمية */}
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/payment" element={<PaymentPage />} />
-                  <Route path="/favorites" element={<Favorites />} />
-                  <Route path="/companies/:companyId" element={<CompaniesPage />} />
-                  <Route path="/payment-success" element={<PaymentSuccess />} />
-                  <Route path="/payment-failed" element={<PaymentFailed />} />
-                </Route>
-              </Routes>
-            </main>
-            <Footer />
-          </div>
-        </Router>
-      </FavoritesProvider>
-    </UserProvider>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <UserProvider>
+        <FavoritesProvider>
+          <Router>
+            <div className="flex flex-col min-h-screen">
+              <Navbar />
+              <main className="flex-grow pt-16 pb-[70px]">
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/services" element={<Services />} />
+                  <Route path="/travel-with-us" element={<TravelWithUs />} />
+                  <Route 
+                    path="/signup" 
+                    element={authService.isAuthenticated() ? <Navigate to="/dashboard" /> : <SignUp />} 
+                  />
+                  <Route 
+                    path="/login" 
+                    element={authService.isAuthenticated() ? <Navigate to="/dashboard" /> : <LogIn />} 
+                  />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/contactus" element={<ContactUsForm />} />
+                  <Route path="/GetInTouch" element={<GetInTouch />} />
+                  <Route path="/CompaniesPag" element={<CompaniesPage />} />
+                  <Route path="/partners" element={<Partners />} />
+                  <Route path="/travels" element={<Travels />} />
+                  <Route path="/companies" element={<Companies />} />
+                  <Route path="/events" element={<Events />} />
+                  <Route path="/AllTours" element={<AllTours />} />
+
+                  {/* صفحات محمية */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/payment" element={<PaymentPage />} />
+                    <Route path="/favorites" element={<Favorites />} />
+                    <Route path="/companies/:companyId" element={<CompaniesPage />} />
+                    <Route path="/payment-success" element={<PaymentSuccess />} />
+                    <Route path="/payment-failed" element={<PaymentFailed />} />
+                  </Route>
+                </Routes>
+              </main>
+              <Footer />
+            </div>
+          </Router>
+        </FavoritesProvider>
+      </UserProvider>
+    </GoogleOAuthProvider>
   );
 }
 

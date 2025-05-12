@@ -88,6 +88,8 @@ export interface Tour {
   companyName?: string;
   companyLogo?: string; 
   imageUrls: string[];
+   image?: string; // نضيفها كخاصية اختيارية
+  tags?: string[]; // نضيفها كخاصية اختيارية
   itineraries?: {
     dayNumber: number;
     activities: string[];

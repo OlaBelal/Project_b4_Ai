@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import  { useEffect, useState } from 'react';
 import { Star, MapPin, Heart } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useFavorites } from '../context/FavoritesContext';
@@ -70,28 +70,23 @@ const TrendingTours = () => {
   };
 
   const handleFavorite = (tour: Tour) => {
-    requireAuth(() => {
-      const isCurrentlyFavorite = isFavorite(tour.id);
-      // إنشاء كائن متوافق مع FavoriteTour
-      const favoriteTour = {
-        ...tour,
-        image: tour.imageUrls // تحويل imageUrl إلى image
-      };
-      toggleFavorite(favoriteTour);
-      
-      const interaction: UserInteraction = {
-        id: tour.id.toString(),
-        type: 'travel',
-        checkout: 0,
-        favourite: !isCurrentlyFavorite,
-        booked: false,
-        total: 0
-      };
-      
-      interaction.total = calculateTotal(interaction);
-      saveInteraction(interaction);
-    });
-  };
+  requireAuth(() => {
+    const isCurrentlyFavorite = isFavorite(tour.id);
+    toggleFavorite(tour); // لم نعد بحاجة لإنشاء كائن جديد
+    
+    const interaction: UserInteraction = {
+      id: tour.id.toString(),
+      type: 'travel',
+      checkout: 0,
+      favourite: !isCurrentlyFavorite,
+      booked: false,
+      total: 0
+    };
+    
+    interaction.total = calculateTotal(interaction);
+    saveInteraction(interaction);
+  });
+};
 
   const handleSeeDetails = (tour: Tour) => {
     const interaction: UserInteraction = {

@@ -4,28 +4,39 @@ import HeaderSection from '../components/HeaderSection';
 import NavigationTabs from '../components/NavigationTabs';
 import TabContent from '../components/TabContent';
 import zr3Image from '../assets/images/zr3.png';
-
-interface Tour {
-  id: number;
-  title: string;
-  description?: string;
-  price: number;
-  location: string;
-  image: string;
-  latitude?: number;
-  longitude?: number;
-  availableSeats?: number;
-  companyName?: string;
-  companyLogo?: string;
-  included?: string[];
-  excluded?: string[];
-}
+import { Tour } from '../types';
 
 const TravelWithUs: React.FC = () => {
   const location = useLocation();
   
-  // Make sure tour has all the required properties
-  const tour = location.state?.tour as Tour;
+  // تعريف القيم الافتراضية للجولة
+  const defaultTour: Tour = {
+    id: 0,
+    title: 'Default Tour',
+    description: '',
+    price: 0,
+    startDate: new Date().toISOString(),
+    endDate: new Date().toISOString(),
+    creationDate: new Date().toISOString(),
+    availableSeats: 0,
+    departurePoint: 'Unknown Departure',
+    departurePointLat: 0,
+    departurePointLng: 0,
+    destinationCity: 'Unknown Destination',
+    destinationCityLat: 0,
+    destinationCityLng: 0,
+    transportationType: 'Unknown',
+    amenities: [],
+    companyId: 0,
+    companyName: 'Unknown Company',
+    companyLogo: '',
+    imageUrls: [],
+    itineraries: [],
+    rating: 0
+  };
+
+  // استخدام الجولة من location.state أو القيم الافتراضية
+  const tour = location.state?.tour as Tour || defaultTour;
 
   const [activeTab, setActiveTab] = useState<string>('Information');
 

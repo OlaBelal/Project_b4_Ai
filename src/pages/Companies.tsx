@@ -70,26 +70,38 @@ const Companies = () => {
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [totalCompanies, setTotalCompanies] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const companiesPerPage = 5;
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      try {
-        setLoading(true);
-        const data = await getCompanies();
-        setCompanies(data.items);
-      } catch (err) {
-        setError('Failed to fetch companies');
-        console.error('Error in fetchCompanies:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-  
-    fetchCompanies();
-  }, []);
+ // في مكون Companies.tsx
+useEffect(() => {
+  const fetchCompanies = async () => {
+    try {
+      setLoading(true);
+      const { items, totalCount } = await getCompanies(currentPage, companiesPerPage);
+      
+      console.log('Fetched Companies:', {
+        currentPage,
+        itemsCount: items.length,
+        items
+      });
+      
+      setCompanies(items);
+      setTotalCompanies(totalCount);
+    } catch (err) {
+      setError('Failed to fetch companies');
+      console.error('Error in fetchCompanies:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchCompanies();
+}, [currentPage]); // التأكد من أن currentPage مدرج في dependencies
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -136,6 +148,8 @@ const Companies = () => {
     return true;
   });
 
+  const totalPages = Math.ceil(totalCompanies / companiesPerPage);
+
   const handleViewCompany = (companyId: number) => {
     navigate(`/companies/${companyId}`);
   };
@@ -146,6 +160,7 @@ const Companies = () => {
         ? prev.filter(s => s !== specialty)
         : [...prev, specialty]
     );
+    setCurrentPage(1);
   };
 
   const resetFilters = () => {
@@ -155,9 +170,96 @@ const Companies = () => {
     setSelectedRating(null);
     setVerifiedOnly(false);
     setSearchTerm('');
+    setCurrentPage(1);
   };
 
-  if (loading) {
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const renderPagination = () => {
+    if (totalPages <= 1) return null;
+
+    const pageButtons = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+
+    if (totalPages > maxVisiblePages) {
+      if (currentPage <= 3) {
+        endPage = maxVisiblePages;
+      } else if (currentPage >= totalPages - 2) {
+        startPage = totalPages - maxVisiblePages + 1;
+      }
+    }
+
+    if (startPage > 1) {
+      pageButtons.push(
+        <button
+          key={1}
+          onClick={() => handlePageChange(1)}
+          className={`px-3 py-1 border rounded ${1 === currentPage ? 'bg-orange-500 text-white' : 'hover:bg-gray-100'}`}
+        >
+          1
+        </button>
+      );
+      if (startPage > 2) {
+        pageButtons.push(<span key="start-ellipsis" className="px-2">...</span>);
+      }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageButtons.push(
+        <button
+          key={i}
+          onClick={() => handlePageChange(i)}
+          className={`px-3 py-1 border rounded ${i === currentPage ? 'bg-orange-500 text-white' : 'hover:bg-gray-100'}`}
+        >
+          {i}
+        </button>
+      );
+    }
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        pageButtons.push(<span key="end-ellipsis" className="px-2">...</span>);
+      }
+      pageButtons.push(
+        <button
+          key={totalPages}
+          onClick={() => handlePageChange(totalPages)}
+          className={`px-3 py-1 border rounded ${totalPages === currentPage ? 'bg-orange-500 text-white' : 'hover:bg-gray-100'}`}
+        >
+          {totalPages}
+        </button>
+      );
+    }
+
+    return (
+      <div className="flex items-center justify-center mt-8 gap-2">
+        <button 
+          onClick={() => handlePageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50"
+        >
+          Previous
+        </button>
+        
+        {pageButtons}
+        
+        <button 
+          onClick={() => handlePageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="px-3 py-1 border rounded hover:bg-gray-100 disabled:opacity-50"
+        >
+          Next
+        </button>
+      </div>
+    );
+  };
+
+  if (loading && currentPage === 1) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-center items-center h-64">
@@ -180,13 +282,10 @@ const Companies = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Discount Slider */}
       <div className="mb-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Special Discounts</h2>
         <div className="relative">
-          <div className={`transition-all duration-300 ease-out ${
-            isAnimating ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-          }`}>
+          <div className={`transition-all duration-300 ease-out ${isAnimating ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
             <div className="bg-white rounded-lg shadow-lg overflow-hidden">
               <div className="flex flex-col md:flex-row h-[300px]">
                 <div className="md:w-2/5">
@@ -271,9 +370,7 @@ const Companies = () => {
         </div>
       </div>
 
-      {/* Companies Section */}
       <div>
-        {/* Header and Filters */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4 md:mb-0">Our Partner Companies</h2>
           <div className="flex items-center gap-4">
@@ -281,7 +378,10 @@ const Companies = () => {
               <input
                 type="text"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
                 placeholder="Search companies..."
                 className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
@@ -297,7 +397,6 @@ const Companies = () => {
           </div>
         </div>
 
-        {/* Filters */}
         {showFilters && (
           <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -305,7 +404,10 @@ const Companies = () => {
                 <h3 className="font-semibold mb-2">Company Type</h3>
                 <select
                   value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedType(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   {companyTypes.map(type => (
@@ -318,7 +420,10 @@ const Companies = () => {
                 <h3 className="font-semibold mb-2">Destination</h3>
                 <select
                   value={selectedDestination}
-                  onChange={(e) => setSelectedDestination(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedDestination(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
                   {destinations.map(destination => (
@@ -333,7 +438,10 @@ const Companies = () => {
                   {[5, 4, 3, 2, 1].map((rating) => (
                     <div
                       key={rating}
-                      onClick={() => setSelectedRating(rating === selectedRating ? null : rating)}
+                      onClick={() => {
+                        setSelectedRating(rating === selectedRating ? null : rating);
+                        setCurrentPage(1);
+                      }}
                       className="flex items-center cursor-pointer"
                     >
                       <div className="flex">
@@ -376,7 +484,10 @@ const Companies = () => {
                   <input
                     type="checkbox"
                     checked={verifiedOnly}
-                    onChange={(e) => setVerifiedOnly(e.target.checked)}
+                    onChange={(e) => {
+                      setVerifiedOnly(e.target.checked);
+                      setCurrentPage(1);
+                    }}
                     className="rounded text-orange-500 focus:ring-orange-500"
                   />
                   <span>Verified Companies Only</span>
@@ -395,17 +506,15 @@ const Companies = () => {
           </div>
         )}
 
-        {/* Companies List - Horizontal Cards */}
         <div className="space-y-6">
-          {filteredCompanies.length === 0 ? (
+          {companies.length === 0 ? (
             <div className="text-center py-12">
               <h3 className="text-xl font-semibold text-gray-700">No companies found</h3>
               <p className="text-gray-500 mt-2">Try adjusting your filters or search criteria</p>
             </div>
           ) : (
-            filteredCompanies.map((company) => (
+            companies.map((company) => (
               <div key={company.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col md:flex-row hover:shadow-lg transition-shadow">
-                {/* Image on Left */}
                 <div className="md:w-1/3 h-48 md:h-auto">
                   <img
                     src={company.profileImageUrl || "https://via.placeholder.com/300x200"}
@@ -414,7 +523,6 @@ const Companies = () => {
                   />
                 </div>
 
-                {/* Content on Right */}
                 <div className="p-6 md:w-2/3 flex flex-col">
                   <div className="flex items-center mb-4">
                     <img
@@ -422,19 +530,19 @@ const Companies = () => {
                       alt={company.companyName}
                       className="w-12 h-12 rounded-full object-cover mr-4 border-2 border-white shadow-sm"
                     />
-                    <div>
-                      <h3 className="text-xl font-bold">{company.companyName}</h3>
-                      <div className="flex items-center">
-                        {Array.from({ length: 5 }).map((_, index) => (
-                          <Star
-                            key={index}
-                            size={16}
-                            className={index < Math.floor(company.rating) ? "text-yellow-400 fill-current" : "text-gray-300"}
-                          />
-                        ))}
-                        <span className="ml-2 text-sm text-gray-600">({company.reviewsCount || 0})</span>
-                      </div>
-                    </div>
+                   <div>
+  <h3 className="text-xl font-bold">{company.companyName}</h3>
+  <div className="flex items-center">
+    {Array.from({ length: 5 }).map((_, index) => (
+      <Star
+        key={index}
+        size={16}
+        className={index < Math.floor(company.rating) ? "text-yellow-400 fill-current" : "text-gray-300"}
+      />
+    ))}
+    <span className="ml-2 text-sm text-gray-600">({company.ratings?.length || 0})</span>
+  </div>
+</div>
                   </div>
 
                   <p className="text-gray-600 mb-4 line-clamp-2">{company.description}</p>
@@ -461,6 +569,8 @@ const Companies = () => {
             ))
           )}
         </div>
+
+        {renderPagination()}
       </div>
     </div>
   );

@@ -1,13 +1,19 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Tour } from '../types';
 import { API_BASE_URL } from '../services/apiConfig';
+import { Heart } from 'lucide-react';
+import { useFavorites } from '../context/FavoritesContext';
+import { authService } from '../services/authService';
 
 interface TabInformationProps {
   tour: Tour;
-  onCompanyNameClick: () => void;
 }
 
-const TabInformation: React.FC<TabInformationProps> = ({ tour, onCompanyNameClick }) => {
+const TabInformation: React.FC<TabInformationProps> = ({ tour }) => {
+  const navigate = useNavigate();
+  const { toggleFavorite, isFavorite } = useFavorites();
+
   // Helper function to calculate duration
   const calculateDuration = (startDate?: string, endDate?: string): string => {
     if (!startDate || !endDate) return '';
@@ -22,13 +28,38 @@ const TabInformation: React.FC<TabInformationProps> = ({ tour, onCompanyNameClic
     }
   };
 
+  // Handle company name click
+  const handleCompanyClick = () => {
+    if (tour.companyId) {
+      navigate(`/companies/${tour.companyId}`);
+    }
+  };
+
+  // Handle favorite button click
+  const handleFavoriteClick = () => {
+    if (!authService.isAuthenticated()) {
+      if (window.confirm('You need to login first. Do you want to login now?')) {
+        navigate('/login');
+      }
+      return;
+    }
+    toggleFavorite(tour);
+  };
+
   return (
     <div>
       {/* Title and Price */}
       <div className="flex items-center mb-2">
         <h2 className="text-3xl font-bold text-gray-900 mr-10">{tour.title}</h2>
         <div className="flex items-center space-x-4">
-          <p className="text-orange-600 text-xl font-semibold">£{tour.price} / Per Couple</p>
+          <button 
+            onClick={handleFavoriteClick}
+            className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label={isFavorite(tour.id) ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            
+          </button>
+          <p className="text-orange-600 text-xl font-semibold mr-8">£{tour.price} / Per person </p>
           <div
             className={`px-3 py-1 rounded-full text-sm font-semibold ${
               tour.availableSeats > 0
@@ -38,36 +69,31 @@ const TabInformation: React.FC<TabInformationProps> = ({ tour, onCompanyNameClic
           >
             {tour.availableSeats > 0 ? 'Available' : 'Sold Out'}
           </div>
+          <Heart
+              size={28}
+              className={ 
+                isFavorite(tour.id)
+                  ? 'text-red-500 fill-current'
+                  : 'text-gray-400 hover:text-red-500'
+              }
+            />
         </div>
       </div>
-
-      {/* Rating */}
-      {/* {tour.rating && (
-        <div className="flex items-center mb-4">
-          <div className="flex space-x-1">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <span key={star} className="text-yellow-400 text-xl">
-                {star <= Math.round(tour.rating) ? '★' : '☆'}
-              </span>
-            ))}
-          </div>
-          <span className="text-gray-600 ml-2 text-sm">
-            (No reviews yet)
-          </span>
-        </div>
-      )} */}
 
       {/* Company Name and Logo */}
       {tour.companyName && (
         <div className="flex items-center mb-4">
           <img
-            src={`${API_BASE_URL}/default-company.png`}
+            src={tour.companyLogo || `${API_BASE_URL}/default-company.png`}
             alt={tour.companyName}
             className="w-12 h-12 rounded-full mr-4"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = `${API_BASE_URL}/default-company.png`;
+            }}
           />
           <span
             className="text-gray-700 text-lg font-semibold cursor-pointer hover:underline"
-            onClick={onCompanyNameClick}
+            onClick={handleCompanyClick}
           >
             {tour.companyName}
           </span>
@@ -112,6 +138,7 @@ const TabInformation: React.FC<TabInformationProps> = ({ tour, onCompanyNameClic
             <strong className="text-[#DF6951] text-lg">Special Offer:</strong>
             <span className="ml-12">Kids under 6 travel at half price!</span>
           </li>
+          
           {/* Amenities */}
           {tour.amenities && tour.amenities.length > 0 && (
             <li className="text-gray-700">
@@ -126,8 +153,7 @@ const TabInformation: React.FC<TabInformationProps> = ({ tour, onCompanyNameClic
             </li>
           )}
 
-          {/* Static Sections as requested */}
-          
+          {/* Included */}
           <li className="text-gray-700">
             <strong className="text-[#DF6951] text-lg">Included:</strong>
             <ul className="grid grid-cols-2 gap-4 pl-4 mt-2">
@@ -137,6 +163,8 @@ const TabInformation: React.FC<TabInformationProps> = ({ tour, onCompanyNameClic
               <li className="text-gray-700">Personal Guide</li>
             </ul>
           </li>
+          
+          {/* Not Included */}
           <li className="text-gray-700">
             <strong className="text-[#DF6951] text-lg">Not Included:</strong>
             <ul className="grid grid-cols-2 gap-4 pl-4 mt-2">

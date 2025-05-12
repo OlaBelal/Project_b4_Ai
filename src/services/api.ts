@@ -1,44 +1,88 @@
-// src/services/api.ts
 import axios from 'axios';
 
 export const API_BASE_URL = 'https://journeymate.runasp.net';
+
+export interface SocialMediaLink {
+  platform: string;
+  url: string;
+}
+
+export interface PaymentMethod {
+  type: string;
+  provider: string;
+}
+
+export interface Rating {
+  userId: string;
+  companyId: number;
+  rating: number;
+  message: string;
+}
+
+export interface Travel {
+  id: number;
+  title: string;
+  description: string;
+  price: number;
+  saleDiscount?: number;
+  startDate: string;
+  endDate: string;
+  creationDate: string;
+  availableSeats: number;
+  departurePoint: string;
+  departurePointLat: number;
+  departurePointLng: number;
+  destinationCity: string;
+  destinationCityLat: number;
+  destinationCityLng: number;
+  transportationType: string;
+  coverImageUrl: string;
+  included: string;
+  notIncluded: string;
+  specialOffer?: string;
+  amenities: string[];
+  companyId: number;
+  companyName: string;
+  imageUrls: string[];
+  itineraries: {
+    dayNumber: number;
+    activities: string[];
+  }[];
+}
+
+export interface WorkingHour {
+  dayOfWeek: string;
+  workingTime: string;
+}
 
 export interface Company {
   id: number;
   userId: string;
   companyName: string;
   address: string;
+  email: string;
+  phoneNumber: string;
   description: string;
-  type?: string;
-  slogan?: string;
-  rating: number;
-  verified?: boolean;
-  coverImage?: string;
-  logo?: string;
-  profileImageUrl?: string;
-  establishedDate?: string;
-  email?: string;
-  phone?: string;
-  location?: string;
   website: string;
-  socialMediaLinks?: string[];
-  paymentMethods?: string[];
+  slogan?: string;
+  profileImageUrl?: string;
+  coverImageUrl?: string;
+  establishedDate?: string;
+  rating: number;
+  socialMediaLinks: SocialMediaLink[];
+  paymentMethods: PaymentMethod[];
+  ratings: Rating[];
+  travels: Travel[];
+  workingHours: WorkingHour[];
+  type?: string;
+  verified?: boolean;
   destinations?: string[];
   specialties?: string[];
-  reviewsCount?: number;
-  reviews?: Review[];
-  workingHours?: WorkingHours[];
-  posts?: Post[];
-  photos?: string[];
-  similarCompanies?: SimilarCompany[];
-  upcomingTravels?: UpcomingTravel[];
-  travels?: any[];
-  ratings?: any[];
   latitude?: number | null;
   longitude?: number | null;
 }
 
-interface Review {
+export interface Review {
   id: number;
   name: string;
   role: string;
@@ -49,13 +93,7 @@ interface Review {
   avatar: string;
 }
 
-
-interface WorkingHours {
-  day: string;
-  hours: string;
-}
-
-interface Post {
+export interface Post {
   id: number;
   userName: string;
   userProfile: string;
@@ -64,14 +102,14 @@ interface Post {
   image?: string;
 }
 
-interface SimilarCompany {
+export interface SimilarCompany {
   id: number;
   name: string;
   image: string;
   email: string;
 }
 
-interface UpcomingTravel {
+export interface UpcomingTravel {
   id: number;
   location: string;
   image: string;
@@ -79,10 +117,20 @@ interface UpcomingTravel {
   daysLeft: number;
 }
 
-export const getCompanies = async (): Promise<{items: Company[], totalCount: number}> => {
+export const getCompanies = async (
+  pageIndex: number = 1,
+  pageSize: number = 5
+): Promise<{ items: Company[], totalCount: number }> => {
   try {
-    const response = await axios.get<{items: Company[], totalCount: number}>(`${API_BASE_URL}/api/Company`);
-    console.log('API Companies Data:', response.data);
+    const response = await axios.get<{ items: Company[], totalCount: number }>(
+      `${API_BASE_URL}/api/Company`,
+      {
+        params: {
+          PageIndex: pageIndex,
+          PageSize: pageSize
+        }
+      }
+    );
     return response.data;
   } catch (error) {
     console.error('Error fetching companies:', error);
@@ -90,27 +138,124 @@ export const getCompanies = async (): Promise<{items: Company[], totalCount: num
   }
 };
 
-export const getCompanyDetails = async (id: number): Promise<Company | null> => {
+export const getCompanyDetails = async (id: number): Promise<Company> => {
   try {
     const response = await axios.get<Company>(`${API_BASE_URL}/api/Company/${id}`);
-    console.log('Company Details Response:', response.data);
-    return response.data;
+    const companyData = response.data;
+    
+    // تحويل البيانات لتتناسب مع الواجهة
+    const formattedCompany: Company = {
+      ...companyData,
+      phoneNumber: companyData.phoneNumber || '',
+      profileImageUrl: companyData.profileImageUrl || 'https://via.placeholder.com/150',
+      coverImageUrl: companyData.coverImageUrl || 'https://via.placeholder.com/1200x400',
+      socialMediaLinks: companyData.socialMediaLinks || [],
+      paymentMethods: companyData.paymentMethods || [],
+      workingHours: companyData.workingHours || [],
+      ratings: companyData.ratings || [],
+      travels: companyData.travels || []
+    };
+
+    return formattedCompany;
   } catch (error) {
     console.error(`Error fetching company ${id} details:`, error);
     throw error;
   }
 };
 
-
 export const submitReview = async (
   companyId: number,
   review: { name: string; text: string; rating: number; avatar?: string }
 ): Promise<Review> => {
   try {
-    const response = await axios.post<Review>(`${API_BASE_URL}/api/Company/${companyId}/reviews`, review);
-    return response.data;
+    // تحويل البيانات لتتناسب مع API
+    const apiReview = {
+      userId: 'current-user-id', // يجب استبدالها بآلية الحصول على ID المستخدم الحالي
+      companyId,
+      rating: review.rating,
+      message: review.text
+    };
+
+    const response = await axios.post<Rating>(
+      `${API_BASE_URL}/api/Company/${companyId}/ratings`,
+      apiReview
+    );
+
+    // تحويل الاستجابة لتتناسب مع واجهة Review
+    const formattedReview: Review = {
+      id: parseInt(response.data.userId),
+      name: review.name,
+      role: 'Customer',
+      image: review.avatar || 'https://randomuser.me/api/portraits/lego/1.jpg',
+      rating: response.data.rating,
+      text: response.data.message,
+      date: new Date().toISOString(),
+      avatar: review.avatar || 'https://randomuser.me/api/portraits/lego/1.jpg'
+    };
+
+    return formattedReview;
   } catch (error) {
     console.error('Error submitting review:', error);
     throw error;
+  }
+};
+
+// دالة مساعدة لحساب الأيام المتبقية
+export const calculateDaysLeft = (dateString: string): number => {
+  const today = new Date();
+  const targetDate = new Date(dateString);
+  const diffTime = targetDate.getTime() - today.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+// دالة مساعدة لتحويل WorkingHour إلى التنسيق المطلوب
+export const formatWorkingHours = (workingHours: WorkingHour[]): { day: string; hours: string }[] => {
+  return workingHours.map(wh => ({
+    day: wh.dayOfWeek,
+    hours: wh.workingTime
+  }));
+};
+
+// دالة لإنشاء بيانات مشابهة للشركات (يمكن استبدالها بطلب API حقيقي)
+export const getSimilarCompanies = async (companyId: number): Promise<SimilarCompany[]> => {
+  try {
+    // هذا مثال - يمكن استبداله بطلب API حقيقي
+    return [
+      {
+        id: 1,
+        name: 'شركة سياحية مشابهة',
+        image: 'https://via.placeholder.com/150',
+        email: 'similar@example.com'
+      },
+      {
+        id: 2,
+        name: 'شركة رحلات أخرى',
+        image: 'https://via.placeholder.com/150',
+        email: 'another@example.com'
+      }
+    ];
+  } catch (error) {
+    console.error('Error fetching similar companies:', error);
+    return [];
+  }
+};
+
+// دالة لإنشاء بيانات المنشورات (يمكن استبدالها بطلب API حقيقي)
+export const getCompanyPosts = async (companyId: number): Promise<Post[]> => {
+  try {
+    // هذا مثال - يمكن استبداله بطلب API حقيقي
+    return [
+      {
+        id: 1,
+        userName: 'مدير الشركة',
+        userProfile: 'https://randomuser.me/api/portraits/lego/1.jpg',
+        time: '2023-05-15T10:30:00',
+        text: 'نعلن عن رحلات جديدة لهذا الموسم!',
+        image: 'https://via.placeholder.com/600x400'
+      }
+    ];
+  } catch (error) {
+    console.error('Error fetching company posts:', error);
+    return [];
   }
 };
