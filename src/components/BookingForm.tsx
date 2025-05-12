@@ -38,7 +38,7 @@ const BookingForm: React.FC<BookingFormProps> = ({ tour }) => {
       state: {
         title: tour.title,
         price: calculateTotalPrice(),
-        tourLocation: tour.location,
+        tourLocation: tour.destinationCity,
         numberOfAdults,
         numberOfChildren,
         customerInfo: {
