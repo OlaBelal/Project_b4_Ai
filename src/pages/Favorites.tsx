@@ -17,9 +17,9 @@ const Favorites = () => {
   const handleBookNow = (tour: Tour) => {
     navigate('/payment', {
       state: {
-        title: tour.title || tour.name,
+        title: tour.title ,
         price: tour.price,
-        location: tour.location || tour.destination,
+        location: tour.destinationCity
       },
     });
   };
@@ -50,21 +50,18 @@ const Favorites = () => {
 
                 <div className="relative">
                   <img
-                      src={
-                        Array.isArray(tour.imageUrls) 
-                          ? tour.imageUrls[0]?.startsWith('http') 
-                            ? tour.imageUrls[0] 
-                            : `${API_BASE_URL}/${tour.imageUrls[0]}`
-                          : tour.imageUrls?.startsWith('http')
-                            ? tour.imageUrls
-                            : `${API_BASE_URL}/${tour.imageUrls}`
-                      }
-                      alt={tour.title || tour.name}
-                      className="w-full h-64 object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = `${API_BASE_URL}/default-tour.jpg`;
-                      }}
-                    />
+  src={
+    tour.imageUrls[0]?.startsWith('http')
+      ? tour.imageUrls[0]
+      : `${API_BASE_URL}/${tour.imageUrls[0]}`
+  }
+  alt={tour.title}
+  className="w-full h-64 object-cover"
+  onError={(e) => {
+    (e.target as HTMLImageElement).src = `${API_BASE_URL}/default-tour.jpg`;
+  }}
+/>
+
                   <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full text-sm font-semibold text-orange-500">
                     £{tour.price}
                   </div>
@@ -72,12 +69,12 @@ const Favorites = () => {
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xl font-semibold text-gray-900">
-                      {tour.title || tour.name}
+                      {tour.title }
                     </h3>
                     <div className="flex items-center">
                       <MapPin size={16} className="mr-1 text-gray-600" />
                       <span className="text-sm text-gray-600">
-                        {tour.location || tour.destination}
+                        {tour.destinationCity}
                       </span>
                     </div>
                   </div>

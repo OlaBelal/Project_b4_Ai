@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { X, ChevronRight } from 'lucide-react';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import axios from 'axios';
+import { authService } from '../services/authService';
 
 interface SocialMediaLink {
   platform: string;
@@ -12,13 +13,6 @@ interface SocialMediaLink {
 interface PaymentMethod {
   type: string;
   provider: string;
-}
-
-interface Rating {
-  userId: string;
-  companyId: number;
-  rating: number;
-  message: string;
 }
 
 interface Travel {
@@ -55,20 +49,8 @@ interface Company {
   rating: number;
   socialMediaLinks: SocialMediaLink[];
   paymentMethods: PaymentMethod[];
-  ratings: Rating[];
   travels: Travel[];
   workingHours: WorkingHour[];
-}
-
-interface Review {
-  id: number;
-  name: string;
-  role: string;
-  image: string;
-  rating: number;
-  text: string;
-  date: string;
-  avatar: string;
 }
 
 interface Post {
@@ -95,29 +77,40 @@ interface UpcomingTravel {
   daysLeft: number;
 }
 
+interface Review {
+  id: string;
+  userId: string;
+  companyId: number;
+  userName: string;
+  userAvatar: string;
+  rating: number;
+  text: string;
+  date: string;
+}
+
 const API_BASE_URL = 'https://journeymate.runasp.net';
 
 const CompaniesPage: React.FC = () => {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("Photos");
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
-  const [showReviewForm, setShowReviewForm] = useState<boolean>(false);
   const [showWorkingTimesModal, setShowWorkingTimesModal] = useState<boolean>(false);
-  const [newReview, setNewReview] = useState({
-    name: "",
-    text: "",
-    rating: 0,
-    avatar: "https://randomuser.me/api/portraits/lego/1.jpg"
-  });
-  const [reviews, setReviews] = useState<Review[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [similarCompanies, setSimilarCompanies] = useState<SimilarCompany[]>([]);
   const [upcomingTravels, setUpcomingTravels] = useState<UpcomingTravel[]>([]);
   const [workingHoursFormatted, setWorkingHoursFormatted] = useState<{day: string, hours: string}[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [showReviewForm, setShowReviewForm] = useState<boolean>(false);
+  const [newReview, setNewReview] = useState({
+    rating: 0,
+    text: '',
+  });
+  const [currentUser, setCurrentUser] = useState(authService.getCurrentUser());
 
   const getCompanyDetails = async (id: number): Promise<Company> => {
     try {
@@ -128,21 +121,23 @@ const CompaniesPage: React.FC = () => {
     }
   };
 
-  const submitReviewToAPI = async (companyId: number, reviewData: {
-    userId: string;
-    companyId: number;
-    rating: number;
-    message: string;
-  }): Promise<Rating> => {
-    try {
-      const response = await axios.post<Rating>(
-        `${API_BASE_URL}/api/Company/${companyId}/ratings`,
-        reviewData
-      );
-      return response.data;
-    } catch (error) {
-      throw new Error('Failed to submit review');
-    }
+  const loadReviews = () => {
+    const allReviews = JSON.parse(localStorage.getItem('companyReviews') || '[]');
+    const companyReviews = allReviews.filter((review: Review) => review.companyId === Number(companyId));
+    setReviews(companyReviews);
+  };
+
+  const saveReview = (review: Review) => {
+    const allReviews = JSON.parse(localStorage.getItem('companyReviews') || '[]');
+    
+    // Remove any existing review by this user for this company
+    const updatedReviews = allReviews.filter(
+      (existingReview: Review) => !(existingReview.userId === review.userId && existingReview.companyId === review.companyId)
+    );
+    
+    updatedReviews.push(review);
+    localStorage.setItem('companyReviews', JSON.stringify(updatedReviews));
+    loadReviews();
   };
 
   const calculateDaysLeft = (dateString: string): number => {
@@ -189,55 +184,292 @@ const CompaniesPage: React.FC = () => {
     return <div className="flex items-center">{stars}</div>;
   };
 
-  const handleReviewSubmit = async (event: React.FormEvent): Promise<void> => {
-    event.preventDefault();
-    
-    if (!company) return;
-
-    try {
-      const reviewData = {
-        userId: 'current-user-id',
-        companyId: company.id,
-        rating: newReview.rating,
-        message: newReview.text
-      };
-
-      const submittedReview = await submitReviewToAPI(company.id, reviewData);
-      
-      const formattedReview: Review = {
-        id: parseInt(submittedReview.userId),
-        name: newReview.name,
-        role: 'Customer',
-        image: newReview.avatar,
-        rating: submittedReview.rating,
-        text: submittedReview.message,
-        date: new Date().toLocaleDateString(),
-        avatar: newReview.avatar
-      };
-
-      setReviews([formattedReview, ...reviews]);
-      setNewReview({
-        name: "",
-        text: "",
-        rating: 0,
-        avatar: "https://randomuser.me/api/portraits/lego/1.jpg"
-      });
-      setShowReviewForm(false);
-    } catch (error) {
-      console.error('Error submitting review:', error);
-    }
-  };
-
-  const handleRatingSelection = (selectedRating: number): void => {
-    setNewReview(prev => ({ ...prev, rating: selectedRating }));
-  };
-
   const handleTravelClick = (travel: Travel) => {
     navigate('/travel-with-us', { state: { tour: travel } });
   };
 
   const handleSimilarCompanyClick = (companyId: number) => {
     navigate(`/companies/${companyId}`);
+  };
+
+  const handleReviewSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    
+    if (!currentUser) {
+      alert('Please login to submit a review');
+      return;
+    }
+
+    if (!newReview.text.trim() || newReview.rating === 0) {
+      alert('Please provide both a rating and review text');
+      return;
+    }
+
+    const review: Review = {
+      id: Date.now().toString(),
+      userId: currentUser.id,
+      companyId: Number(companyId),
+      userName: currentUser.name || 'Anonymous',
+      userAvatar: currentUser.avatar || 'https://media.istockphoto.com/id/1337144146/vector/default-avatar-profile-icon-vector.jpg?s=612x612&w=0&k=20&c=BIbFwuv7FxTWvh5S3vB6bkT0Qv8Vn8N5Ffseq84ClGI=',
+      rating: newReview.rating,
+      text: newReview.text,
+      date: new Date().toISOString()
+    };
+
+    saveReview(review);
+    setShowReviewForm(false);
+    setNewReview({
+      rating: 0,
+      text: ''
+    });
+  };
+
+  const renderReviewForm = () => (
+    <div className="bg-white p-5 rounded-lg shadow-md mb-5">
+      <h3 className="text-xl font-bold mb-4">Write a Review</h3>
+      {currentUser ? (
+        <form onSubmit={handleReviewSubmit}>
+          <div className="mb-4">
+            <label className="block text-gray-700 mb-2">Rating *</label>
+            <div className="flex">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  className={`text-2xl ${star <= newReview.rating ? 'text-yellow-500' : 'text-gray-300'}`}
+                  onClick={() => setNewReview({...newReview, rating: star})}
+                >
+                  ★
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mb-4">
+            <label className="block text-gray-700 mb-2">Your Review *</label>
+            <textarea
+              className="w-full p-2 border rounded"
+              rows={4}
+              value={newReview.text}
+              onChange={(event) => setNewReview({...newReview, text: event.target.value})}
+              required
+            ></textarea>
+          </div>
+          <div className="flex justify-end space-x-2">
+            <button
+              type="button"
+              className="px-4 py-2 border rounded"
+              onClick={() => setShowReviewForm(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className={`px-4 py-2 text-white rounded ${
+                !newReview.text.trim() || newReview.rating === 0
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-orange-500 hover:bg-orange-600'
+              }`}
+              disabled={!newReview.text.trim() || newReview.rating === 0}
+            >
+              Submit Review
+            </button>
+          </div>
+        </form>
+      ) : (
+        <div className="text-center py-4">
+          <p className="mb-4">Please login to leave a review</p>
+          <button
+            onClick={() => navigate('/login')}
+            className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+          >
+            Login
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderReviews = () => (
+    <div className="bg-white p-5 rounded-lg shadow-md mb-5">
+      <div className="flex justify-between items-center mb-5">
+        <h3 className="text-xl font-bold">Reviews</h3>
+        <button
+          onClick={() => setShowReviewForm(true)}
+          className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+        >
+          Write a Review
+        </button>
+      </div>
+      
+      {reviews.length > 0 ? (
+        reviews.map((review) => (
+          <div key={review.id} className="border-b pb-4 mb-4 last:border-b-0">
+            <div className="flex items-center mb-2">
+              <img
+                src={review.userAvatar}
+                alt={review.userName}
+                className="w-10 h-10 rounded-full mr-3"
+              />
+              <div>
+                <h4 className="font-semibold">{review.userName}</h4>
+                <div className="flex items-center">
+                  {renderStarRating(review.rating)}
+                  <span className="text-sm text-gray-500 ml-2">
+                    {new Date(review.date).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <p className="text-gray-700">{review.text}</p>
+          </div>
+        ))
+      ) : (
+        <div className="text-center py-8">
+          <p className="text-gray-500 mb-4">No reviews yet</p>
+          <button
+            onClick={() => setShowReviewForm(true)}
+            className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+          >
+            Be the first to review
+          </button>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderTabContent = (): JSX.Element => {
+    switch (activeTab) {
+      case "Posts":
+        return (
+          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
+            {posts.length > 0 ? (
+              posts.map(post => (
+                <div key={post.id} className="mb-6">
+                  <div className="flex items-center mb-3">
+                    <img src={post.userProfile} alt={post.userName} className="w-10 h-10 rounded-full mr-3" />
+                    <div>
+                      <h3 className="font-semibold">{post.userName}</h3>
+                      <p className="text-sm text-gray-600">{new Date(post.time).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <p className="text-gray-800 mb-3">{post.text}</p>
+                  {post.image && <img src={post.image} alt="Post" className="w-full h-64 object-cover rounded-lg" />}
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-10">No posts available</p>
+            )}
+          </div>
+        );
+      case "Description":
+        return (
+          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
+            <p className="text-gray-800">{company?.description}</p>
+          </div>
+        );
+      case "Photos":
+        return (
+          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
+            <div className="grid grid-cols-3 gap-4">
+              {company?.profileImageUrl && (
+                <img src={company.profileImageUrl} alt="Profile" className="w-full h-48 object-cover rounded-lg" />
+              )}
+              {company?.coverImageUrl && (
+                <img src={company.coverImageUrl} alt="Cover" className="w-full h-48 object-cover rounded-lg" />
+              )}
+              {company?.travels.flatMap(travel => 
+                travel.imageUrls.map((url, index) => (
+                  <img
+                    key={`${travel.id}-${index}`}
+                    src={url}
+                    alt={`Travel ${travel.id}`}
+                    className="w-full h-48 object-cover rounded-lg"
+                  />
+                ))
+              )}
+            </div>
+          </div>
+        );
+      case "Travels":
+        return (
+          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
+            <h2 className="text-xl font-bold mb-5">Available Tours</h2>
+            {company?.travels && company.travels.length > 0 ? (
+              <div className="grid grid-cols-1 gap-6">
+                {company.travels.map(travel => (
+                  <div key={travel.id} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <div className="md:flex">
+                      <div className="md:w-1/3 h-48 md:h-auto">
+                        <img
+                          src={travel.coverImageUrl || travel.imageUrls?.[0] || 'https://via.placeholder.com/300x200'}
+                          alt={travel.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="p-4 md:w-2/3">
+                        <div className="flex justify-between items-start">
+                          <h3 className="text-lg font-bold text-orange-500">{travel.title}</h3>
+                          <span className="bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded">
+                            ${travel.price.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex items-center mt-1 mb-2">
+                          {company && renderStarRating(company.rating)}
+                          <span className="ml-2 text-sm text-gray-600">{travel.destinationCity}</span>
+                        </div>
+                        <p className="text-gray-600 line-clamp-2">{travel.description}</p>
+                        <div className="mt-4 flex flex-wrap gap-4 text-sm">
+                          <div className="flex items-center">
+                            <i className="fas fa-calendar-day text-orange-500 mr-2"></i>
+                            <span>
+                              {new Date(travel.startDate).toLocaleDateString()} - {new Date(travel.endDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <div className="flex items-center">
+                            <i className="fas fa-chair text-orange-500 mr-2"></i>
+                            <span>{travel.availableSeats} seats available</span>
+                          </div>
+                          {travel.transportationType && (
+                            <div className="flex items-center">
+                              <i className="fas fa-bus text-orange-500 mr-2"></i>
+                              <span>{travel.transportationType}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="mt-4 flex justify-between items-center">
+                          <button 
+                            onClick={() => handleTravelClick(travel)}
+                            className="text-orange-500 hover:text-orange-600 font-medium flex items-center"
+                          >
+                            View Details <ChevronRight className="ml-1" size={16} />
+                          </button>
+                          <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition duration-300">
+                            Book Now
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-10">No tours available at the moment</p>
+            )}
+          </div>
+        );
+      case "Reviews":
+        return (
+          <>
+            {showReviewForm ? renderReviewForm() : renderReviews()}
+          </>
+        );
+      default:
+        return (
+          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
+            <p className="text-gray-800">{company?.description}</p>
+          </div>
+        );
+    }
   };
 
   useEffect(() => {
@@ -248,18 +480,6 @@ const CompaniesPage: React.FC = () => {
         
         setCompany(companyData);
         setWorkingHoursFormatted(formatWorkingHours(companyData.workingHours));
-        
-        const formattedReviews = companyData.ratings.map(rating => ({
-          id: parseInt(rating.userId),
-          name: `User ${rating.userId.substring(0, 5)}`,
-          role: "Customer",
-          image: "https://randomuser.me/api/portraits/lego/1.jpg",
-          rating: rating.rating,
-          text: rating.message || 'No review text',
-          date: new Date().toLocaleDateString(),
-          avatar: "https://randomuser.me/api/portraits/lego/1.jpg"
-        }));
-        setReviews(formattedReviews);
 
         const upcoming = companyData.travels
           .filter(travel => calculateDaysLeft(travel.startDate) > 0)
@@ -272,7 +492,6 @@ const CompaniesPage: React.FC = () => {
           }));
         setUpcomingTravels(upcoming);
 
-        // Sample data for posts
         setPosts([{
           id: 1,
           userName: 'Company Admin',
@@ -282,7 +501,6 @@ const CompaniesPage: React.FC = () => {
           image: 'https://via.placeholder.com/600x400'
         }]);
 
-        // Sample similar companies (3 companies)
         setSimilarCompanies([
           {
             id: 1,
@@ -303,6 +521,8 @@ const CompaniesPage: React.FC = () => {
             email: 'nile@example.com'
           }
         ]);
+
+        loadReviews();
 
       } catch (error) {
         setError(error instanceof Error ? error.message : 'An unknown error occurred');
@@ -351,248 +571,9 @@ const CompaniesPage: React.FC = () => {
     );
   }
 
-  const renderTabContent = (): JSX.Element => {
-    switch (activeTab) {
-      case "Posts":
-        return (
-          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
-            {posts.length > 0 ? (
-              posts.map(post => (
-                <div key={post.id} className="mb-6">
-                  <div className="flex items-center mb-3">
-                    <img src={post.userProfile} alt={post.userName} className="w-10 h-10 rounded-full mr-3" />
-                    <div>
-                      <h3 className="font-semibold">{post.userName}</h3>
-                      <p className="text-sm text-gray-600">{new Date(post.time).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                  <p className="text-gray-800 mb-3">{post.text}</p>
-                  {post.image && <img src={post.image} alt="Post" className="w-full h-64 object-cover rounded-lg" />}
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center py-10">No posts available</p>
-            )}
-          </div>
-        );
-      case "Description":
-        return (
-          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
-            <p className="text-gray-800">{company.description}</p>
-          </div>
-        );
-      case "Photos":
-        return (
-          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
-            <div className="grid grid-cols-3 gap-4">
-              {company.profileImageUrl && (
-                <img src={company.profileImageUrl} alt="Profile" className="w-full h-48 object-cover rounded-lg" />
-              )}
-              {company.coverImageUrl && (
-                <img src={company.coverImageUrl} alt="Cover" className="w-full h-48 object-cover rounded-lg" />
-              )}
-              {company.travels.flatMap(travel => 
-                travel.imageUrls.map((url, index) => (
-                  <img
-                    key={`${travel.id}-${index}`}
-                    src={url}
-                    alt={`Travel ${travel.id}`}
-                    className="w-full h-48 object-cover rounded-lg"
-                  />
-                ))
-              )}
-            </div>
-          </div>
-        );
-      case "Travels":
-        return (
-          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
-            <h2 className="text-xl font-bold mb-5">Available Tours</h2>
-            {company.travels.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6">
-                {company.travels.map(travel => (
-                  <div key={travel.id} className="border rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
-                    <div className="md:flex">
-                      <div className="md:w-1/3 h-48 md:h-auto">
-                        <img
-                          src={travel.coverImageUrl || travel.imageUrls?.[0] || 'https://via.placeholder.com/300x200'}
-                          alt={travel.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <div className="p-4 md:w-2/3">
-                        <div className="flex justify-between items-start">
-                          <h3 className="text-lg font-bold text-orange-500">{travel.title}</h3>
-                          <span className="bg-green-100 text-green-800 text-sm font-medium px-2.5 py-0.5 rounded">
-                            ${travel.price.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex items-center mt-1 mb-2">
-                          {renderStarRating(company.rating)}
-                          <span className="ml-2 text-sm text-gray-600">{travel.destinationCity}</span>
-                        </div>
-                        <p className="text-gray-600 line-clamp-2">{travel.description}</p>
-                        <div className="mt-4 flex flex-wrap gap-4 text-sm">
-                          <div className="flex items-center">
-                            <i className="fas fa-calendar-day text-orange-500 mr-2"></i>
-                            <span>
-                              {new Date(travel.startDate).toLocaleDateString()} - {new Date(travel.endDate).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center">
-                            <i className="fas fa-chair text-orange-500 mr-2"></i>
-                            <span>{travel.availableSeats} seats available</span>
-                          </div>
-                          {travel.transportationType && (
-                            <div className="flex items-center">
-                              <i className="fas fa-bus text-orange-500 mr-2"></i>
-                              <span>{travel.transportationType}</span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="mt-4 flex justify-between items-center">
-                          <button 
-                            onClick={() => handleTravelClick(travel)}
-                            className="text-orange-500 hover:text-orange-600 font-medium flex items-center"
-                          >
-                            View Details <ChevronRight className="ml-1" size={16} />
-                          </button>
-                          <button className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition duration-300">
-                            Book Now
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-10">No tours available at the moment</p>
-            )}
-          </div>
-        );
-      case "Review":
-        return (
-          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
-            <div className="flex justify-between items-center mb-5">
-              <h2 className="text-xl font-bold">Reviews ({reviews.length})</h2>
-              <button
-                onClick={() => setShowReviewForm(true)}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg transition duration-300"
-              >
-                Add Review
-              </button>
-            </div>
-
-            {showReviewForm && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-xl shadow-2xl max-w-md w-full">
-                  <div className="p-6">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold text-gray-900">Write a Review</h2>
-                      <button 
-                        onClick={() => setShowReviewForm(false)}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <X size={24} />
-                      </button>
-                    </div>
-
-                    <form onSubmit={handleReviewSubmit}>
-                      <div className="mb-4">
-                        <label className="block text-gray-700 mb-2">Your Name</label>
-                        <input
-                          type="text"
-                          value={newReview.name}
-                          onChange={(e) => setNewReview(prev => ({ ...prev, name: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                          required
-                        />
-                      </div>
-
-                      <div className="mb-4">
-                        <label className="block text-gray-700 mb-2">Your Rating</label>
-                        <div className="flex">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              type="button"
-                              onClick={() => handleRatingSelection(star)}
-                              className="text-2xl mr-2 focus:outline-none"
-                            >
-                              {star <= newReview.rating ? (
-                                <i className="fas fa-star text-yellow-500"></i>
-                              ) : (
-                                <i className="far fa-star text-yellow-500"></i>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="mb-4">
-                        <label className="block text-gray-700 mb-2">Your Review</label>
-                        <textarea
-                          value={newReview.text}
-                          onChange={(e) => setNewReview(prev => ({ ...prev, text: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                          rows={4}
-                          required
-                        ></textarea>
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg transition duration-300"
-                      >
-                        Submit Review
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {reviews.length === 0 ? (
-              <div className="text-center py-10">
-                <p className="text-gray-500">No reviews yet. Be the first to review!</p>
-              </div>
-            ) : (
-              reviews.map((review) => (
-                <div key={review.id} className="mb-6 pb-6 border-b border-gray-200 last:border-b-0">
-                  <div className="flex items-center mb-3">
-                    <img
-                      src={review.avatar}
-                      alt={review.name}
-                      className="w-10 h-10 rounded-full mr-3"
-                    />
-                    <div>
-                      <h3 className="font-semibold">{review.name}</h3>
-                      <p className="text-sm text-gray-600">{review.role}</p>
-                      <div className="flex items-center">
-                        {renderStarRating(review.rating)}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-gray-800">{review.text}</p>
-                  <p className="text-sm text-gray-500 mt-2">{review.date}</p>
-                </div>
-              ))
-            )}
-          </div>
-        );
-      default:
-        return (
-          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
-            <p className="text-gray-800">{company.description}</p>
-          </div>
-        );
-    }
-  };
-
   return (
-    <div className="font-sans max-w-[1400px] mx-auto p-5">
-      <div className="bg-white rounded-lg shadow-md mb-5 max-w-[1300px] mx-auto ">
+    <div className="relative font-sans max-w-[1400px] mx-auto p-5">
+      <div className="bg-white rounded-lg shadow-md mb-5 max-w-[1300px] mx-auto">
         <div className="relative">
           <div className="h-72 overflow-hidden rounded-t-lg">
             <img
@@ -602,7 +583,7 @@ const CompaniesPage: React.FC = () => {
             />
           </div>
 
-          <div className="flex items-center mt-[-75px] px-10 pb-8 z-10 relative">
+          <div className="flex items-center mt-[-75px] px-10 pb-8 relative">
             <div className="w-36 h-36 rounded-full overflow-hidden border-4 border-white shadow-md">
               <img
                 src={company.profileImageUrl || "https://via.placeholder.com/150"}
@@ -651,7 +632,6 @@ const CompaniesPage: React.FC = () => {
 
       <div className="px-5">
         <div className="flex gap-5 mt-5">
-          {/* Left Sidebar - Widened to 300px */}
           <div className="w-[320px] sticky top-5 h-[calc(100vh-40px)] overflow-y-auto no-scrollbar">
             <div className="bg-white p-5 rounded-lg shadow-md">
               <h2 className="text-xl font-bold mb-3">Intro</h2>
@@ -683,7 +663,6 @@ const CompaniesPage: React.FC = () => {
                 )}
               </p>
 
-              {/* Open/Closed Now */}
               <div
                 className="cursor-pointer mb-5"
                 onClick={() => setShowWorkingTimesModal(true)}
@@ -696,44 +675,15 @@ const CompaniesPage: React.FC = () => {
                   {isOpenNow() ? "Open now" : "Closed now"}
                 </p>
               </div>
-
-              {/* Working Hours Modal */}
-              {showWorkingTimesModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-                  <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-                    <div className="flex justify-between items-center mb-6">
-                      <h2 className="text-2xl font-bold text-gray-900">Working Hours</h2>
-                      <button 
-                        onClick={() => setShowWorkingTimesModal(false)}
-                        className="text-gray-500 hover:text-gray-700"
-                      >
-                        <X size={24} />
-                      </button>
-                    </div>
-                    <div className="space-y-4">
-                      {workingHoursFormatted.map((day, index) => (
-                        <div key={index} className="flex justify-between">
-                          <p className="text-gray-700">{day.day}</p>
-                          <p className="text-gray-700">{day.hours}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <p
                 className="text-black font-semibold mt-3 cursor-pointer hover:text-orange-500"
-                onClick={() => setActiveTab("Review")}
+                onClick={() => setActiveTab("Reviews")}
               >
                 {reviews.length > 0 ? `${reviews.length} Reviews` : "No reviews yet"}
               </p>
             </div>
-
-            
           </div>
 
-          {/* Main Content */}
           <div className="flex-1">
             <div className="flex justify-between border-b-2 border-gray-200 mb-5">
               <button 
@@ -748,7 +698,6 @@ const CompaniesPage: React.FC = () => {
               >
                 Description
               </button>
-              
               <button 
                 className={`pb-2 px-4 text-gray-600 font-semibold ${activeTab === "Travels" ? "border-b-2 border-[#DF6951]" : ""}`}
                 onClick={() => setActiveTab("Travels")}
@@ -756,18 +705,19 @@ const CompaniesPage: React.FC = () => {
                 Travels
               </button>
               <button 
-                className={`pb-2 px-4 text-gray-600 font-semibold ${activeTab === "Review" ? "border-b-2 border-[#DF6951]" : ""}`}
-                onClick={() => setActiveTab("Review")}
+                className={`pb-2 px-4 text-gray-600 font-semibold ${activeTab === "Reviews" ? "border-b-2 border-[#DF6951]" : ""}`}
+                onClick={() => setActiveTab("Reviews")}
               >
-                Review
+                Reviews
               </button>
             </div>
 
             {renderTabContent()}
           </div>
 
-          {/* Right Sidebar */}
-          <div className="w-[280px] sticky top-5 h-[calc(100vh-40px)]">
+          <div className={`w-[280px] h-[calc(100vh-40px)] sticky top-5 ${
+            showWorkingTimesModal ? "opacity-50 pointer-events-none" : ""
+          }`}>
             <div className="bg-white p-5 rounded-lg shadow-md mb-5">
               <h2 className="text-xl font-bold mb-5 text-orange-500">Upcoming Travels</h2>
               {upcomingTravels.length > 0 ? (
@@ -797,7 +747,7 @@ const CompaniesPage: React.FC = () => {
                 <p className="text-gray-500">No upcoming travels scheduled</p>
               )}
             </div>
-            {/* Similar Companies Section */}
+            
             <div className="bg-white p-5 rounded-lg shadow-md mt-5">
               <h2 className="text-xl font-bold mb-5 text-orange-500">Similar Companies</h2>
               {similarCompanies.map(company => (
@@ -821,6 +771,30 @@ const CompaniesPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {showWorkingTimesModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Working Hours</h2>
+              <button 
+                onClick={() => setShowWorkingTimesModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            <div className="space-y-4">
+              {workingHoursFormatted.map((day, index) => (
+                <div key={index} className="flex justify-between">
+                  <p className="text-gray-700">{day.day}</p>
+                  <p className="text-gray-700">{day.hours}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

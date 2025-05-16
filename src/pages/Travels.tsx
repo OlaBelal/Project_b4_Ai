@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, MapPin, Clock, CalendarDays, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { fetchTours } from '../services/travelService';
+import { fetchTours, fetchDiscountedTours, fetchLeavingSoonTours } from '../services/travelService';
 import { Tour } from '../types';
 import { UserInteraction } from '../interfaces/userInteraction';
 import { API_BASE_URL } from '../services/apiConfig';
@@ -12,14 +12,16 @@ import { authService } from '../services/authService';
 
 const Travels = () => {
   // States initialization
-  const [tours, setTours] = useState<Tour[]>([]);
+  const [regularTours, setRegularTours] = useState<Tour[]>([]);
+  const [discountedTours, setDiscountedTours] = useState<Tour[]>([]);
+  const [leavingSoonTours, setLeavingSoonTours] = useState<Tour[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(6); // عدد العناصر في كل صفحة
+  const [itemsPerPage] = useState(5);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,19 +41,20 @@ const Travels = () => {
     "Luxury"
   ];
 
-  // Fetch tours data
+  // Fetch all tours data
   useEffect(() => {
-    const loadTours = async () => {
+    const loadAllTours = async () => {
       try {
-        console.log('Fetching tours data...');
-        const data = await fetchTours();
-        
-        if (!data) {
-          throw new Error('No data received from server');
-        }
+        setLoading(true);
+        const [regular, discounted, leavingSoon] = await Promise.all([
+          fetchTours(),
+          fetchDiscountedTours(),
+          fetchLeavingSoonTours().then(res => res.items)
+        ]);
 
-        console.log('Tours data received:', data);
-        setTours(data);
+        setRegularTours(regular);
+        setDiscountedTours(discounted);
+        setLeavingSoonTours(leavingSoon);
         setError('');
       } catch (err) {
         console.error('Error loading tours:', err);
@@ -61,8 +64,22 @@ const Travels = () => {
       }
     };
 
-    loadTours();
+    loadAllTours();
   }, []);
+
+  // Combine all tours and remove duplicates
+  const allTours = React.useMemo(() => {
+    const combined = [...regularTours, ...discountedTours, ...leavingSoonTours];
+    return combined.filter((tour, index, self) =>
+      index === self.findIndex(t => t.id === tour.id)
+    );
+  }, [regularTours, discountedTours, leavingSoonTours]);
+
+  // Handle page change
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Handle authentication requirement
   const requireAuth = (action: () => void) => {
@@ -141,7 +158,7 @@ const Travels = () => {
   };
 
   // Filter tours based on search criteria
-  const filteredTours = tours.filter(tour => {
+  const filteredTours = allTours.filter(tour => {
     // Search by title
     if (searchTerm && !tour.title.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
@@ -171,8 +188,6 @@ const Travels = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentTours = filteredTours.slice(indexOfFirstItem, indexOfLastItem);
 
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
-
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
@@ -193,9 +208,9 @@ const Travels = () => {
     pageButtons.push(
       <button
         key="prev"
-        onClick={() => paginate(Math.max(1, currentPage - 1))}
+        onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
         disabled={currentPage === 1}
-        className={`px-3 py-1 border rounded ${currentPage === 1 ? 'bg-gray-100 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+        className={`px-3 py-1 mx-1 border rounded ${currentPage === 1 ? 'bg-gray-200 cursor-not-allowed' : 'hover:bg-gray-100'}`}
       >
         <ChevronLeft size={16} />
       </button>
@@ -206,18 +221,14 @@ const Travels = () => {
       pageButtons.push(
         <button
           key={1}
-          onClick={() => paginate(1)}
-          className={`px-3 py-1 border rounded ${currentPage === 1 ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
+          onClick={() => handlePageChange(1)}
+          className={`px-3 py-1 mx-1 border rounded ${1 === currentPage ? 'bg-orange-500 text-white' : 'hover:bg-gray-100'}`}
         >
           1
         </button>
       );
       if (startPage > 2) {
-        pageButtons.push(
-          <span key="start-ellipsis" className="px-3 py-1">
-            ...
-          </span>
-        );
+        pageButtons.push(<span key="start-ellipsis" className="px-2">...</span>);
       }
     }
 
@@ -226,8 +237,8 @@ const Travels = () => {
       pageButtons.push(
         <button
           key={i}
-          onClick={() => paginate(i)}
-          className={`px-3 py-1 border rounded ${currentPage === i ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
+          onClick={() => handlePageChange(i)}
+          className={`px-3 py-1 mx-1 border rounded ${i === currentPage ? 'bg-orange-500 text-white' : 'hover:bg-gray-100'}`}
         >
           {i}
         </button>
@@ -237,17 +248,13 @@ const Travels = () => {
     // Last page
     if (endPage < totalPages) {
       if (endPage < totalPages - 1) {
-        pageButtons.push(
-          <span key="end-ellipsis" className="px-3 py-1">
-            ...
-          </span>
-        );
+        pageButtons.push(<span key="end-ellipsis" className="px-2">...</span>);
       }
       pageButtons.push(
         <button
           key={totalPages}
-          onClick={() => paginate(totalPages)}
-          className={`px-3 py-1 border rounded ${currentPage === totalPages ? 'bg-blue-500 text-white' : 'hover:bg-gray-100'}`}
+          onClick={() => handlePageChange(totalPages)}
+          className={`px-3 py-1 mx-1 border rounded ${totalPages === currentPage ? 'bg-orange-500 text-white' : 'hover:bg-gray-100'}`}
         >
           {totalPages}
         </button>
@@ -258,16 +265,16 @@ const Travels = () => {
     pageButtons.push(
       <button
         key="next"
-        onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
+        onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
         disabled={currentPage === totalPages}
-        className={`px-3 py-1 border rounded ${currentPage === totalPages ? 'bg-gray-100 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+        className={`px-3 py-1 mx-1 border rounded ${currentPage === totalPages ? 'bg-gray-200 cursor-not-allowed' : 'hover:bg-gray-100'}`}
       >
         <ChevronRight size={16} />
       </button>
     );
 
     return (
-      <div className="flex items-center justify-center mt-8 gap-2">
+      <div className="flex justify-center mt-8">
         {pageButtons}
       </div>
     );
@@ -338,7 +345,10 @@ const Travels = () => {
                 <input
                   type="text"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Search tours..."
                   className="w-full p-2 border rounded-lg pl-4 pr-10"
                 />
@@ -354,14 +364,20 @@ const Travels = () => {
                   type="number"
                   placeholder="Min"
                   value={priceRange.min}
-                  onChange={(e) => setPriceRange({...priceRange, min: e.target.value})}
+                  onChange={(e) => {
+                    setPriceRange({...priceRange, min: e.target.value});
+                    setCurrentPage(1);
+                  }}
                   className="w-full p-2 border rounded"
                 />
                 <input
                   type="number"
                   placeholder="Max"
                   value={priceRange.max}
-                  onChange={(e) => setPriceRange({...priceRange, max: e.target.value})}
+                  onChange={(e) => {
+                    setPriceRange({...priceRange, max: e.target.value});
+                    setCurrentPage(1);
+                  }}
                   className="w-full p-2 border rounded"
                 />
               </div>
@@ -383,6 +399,7 @@ const Travels = () => {
                         } else {
                           setSelectedCategories([...selectedCategories, category]);
                         }
+                        setCurrentPage(1);
                       }}
                       className="mr-2"
                     />
@@ -411,10 +428,10 @@ const Travels = () => {
           {filteredTours.length === 0 ? (
             <div className="text-center py-12">
               <h3 className="text-xl font-semibold mb-2">
-                {tours.length === 0 ? 'No tours available' : 'No matching tours found'}
+                {allTours.length === 0 ? 'No tours available' : 'No matching tours found'}
               </h3>
               <p className="text-gray-600">
-                {tours.length === 0
+                {allTours.length === 0
                   ? 'There are currently no tours available.'
                   : 'Try adjusting your search filters.'}
               </p>
@@ -422,119 +439,136 @@ const Travels = () => {
           ) : (
             <>
               <div className="space-y-6">
-                {currentTours.map((tour) => (
-                  <div className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition-shadow">
-  <div className="flex flex-col md:flex-row">
-    {/* Tour Image */}
-    <div className="md:w-1/3 relative">
-      <img
-        src={
-          tour.imageUrls && tour.imageUrls.length > 0
-            ? tour.imageUrls[0].startsWith('http')
-              ? tour.imageUrls[0]
-              : `${API_BASE_URL}${tour.imageUrls[0]}`
-            : `${API_BASE_URL}/default-tour.jpg`
-        }
-        alt={tour.title}
-        className="w-full h-48 object-cover"
-        onError={(e) => {
-          (e.target as HTMLImageElement).src = `${API_BASE_URL}/default-tour.jpg`;
-        }}
-      />
-    </div>
+                {currentTours.map((tour) => {
+                  const isDiscounted = discountedTours.some(t => t.id === tour.id);
+                  const isLeavingSoon = leavingSoonTours.some(t => t.id === tour.id);
 
-    {/* Tour Details */}
-    <div className="md:w-2/3 p-6 relative">
-      {/* زر المفضلة في الزاوية العليا اليمنى */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          handleFavorite(tour);
-        }}
-        className="absolute top-4 right-4 p-2"
-      >
-        <Heart
-          size={28}  // تكبير حجم القلب
-          className={
-            isFavorite(tour.id)
-              ? 'text-red-500 fill-current'
-              : 'text-gray-400 hover:text-red-500'
-          }
-        />
-      </button>
+                  return (
+                    <div key={tour.id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition-shadow">
+                      <div className="flex flex-col md:flex-row">
+                        {/* Tour Image */}
+                        <div className="md:w-1/3 relative">
+                          <img
+                            src={
+                              tour.imageUrls && tour.imageUrls.length > 0
+                                ? tour.imageUrls[0].startsWith('http')
+                                  ? tour.imageUrls[0]
+                                  : `${API_BASE_URL}${tour.imageUrls[0]}`
+                                : `${API_BASE_URL}/default-tour.jpg`
+                            }
+                            alt={tour.title}
+                            className="w-full h-48 object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = `${API_BASE_URL}/default-tour.jpg`;
+                            }}
+                          />
+                          {/* Badges */}
+                          {(isDiscounted || isLeavingSoon) && (
+                            <div className="absolute top-2 left-2 flex gap-2">
+                              {isDiscounted && (
+                                <span className="bg-green-500 text-white text-xs px-2 py-1 rounded">
+                                  Discounted
+                                </span>
+                              )}
+                              {isLeavingSoon && (
+                                <span className="bg-red-500 text-white text-xs px-2 py-1 rounded">
+                                  Leaving Soon
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
 
-      <div className="flex items-baseline justify-between mb-2">
-        <div className="flex items-center gap-4">
-          <h3 className="text-xl font-bold">{tour.title}</h3>
-          <span className="text-orange-500 font-semibold text-lg">
-            {tour.price.toLocaleString()} EGP
-          </span>
-        </div>
-        
-        {/* التقييم (اختياري) */}
-        {tour.rating && (
-          <div className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
-            <Star className="fill-current mr-1" size={14} />
-            {tour.rating.toFixed(1)}
-          </div>
-        )}
-      </div>
+                        {/* Tour Details */}
+                        <div className="md:w-2/3 p-6 relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFavorite(tour);
+                            }}
+                            className="absolute top-4 right-4 p-2"
+                          >
+                            <Heart
+                              size={28}
+                              className={
+                                isFavorite(tour.id)
+                                  ? 'text-red-500 fill-current'
+                                  : 'text-gray-400 hover:text-red-500'
+                              }
+                            />
+                          </button>
 
-      {/* بقية تفاصيل الرحلة */}
-      <div className="flex items-center text-gray-600 mb-3">
-        <MapPin size={16} className="mr-1" />
-        <span>{tour.destinationCity}</span>
-      </div>
+                          <div className="flex items-baseline justify-between mb-2">
+                            <div className="flex items-center gap-4">
+                              <h3 className="text-xl font-bold">{tour.title}</h3>
+                              <span className="text-orange-500 font-semibold text-lg">
+                                {tour.price.toLocaleString()} EGP
+                              </span>
+                            </div>
+                            
+                            {tour.rating && (
+                              <div className="flex items-center bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                                <Star className="fill-current mr-1" size={14} />
+                                {tour.rating.toFixed(1)}
+                              </div>
+                            )}
+                          </div>
 
-      <div className="flex items-center text-gray-600 mb-3">
-        <CalendarDays size={16} className="mr-1" />
-        <span>
-          {tour.startDate && tour.endDate
-            ? `${formatDate(tour.startDate)} - ${formatDate(tour.endDate)}`
-            : 'Flexible dates'}
-        </span>
-      </div>
+                          <div className="flex items-center text-gray-600 mb-3">
+                            <MapPin size={16} className="mr-1" />
+                            <span>{tour.destinationCity}</span>
+                          </div>
 
-      <div className="flex items-center text-gray-600 mb-4">
-        <Clock size={16} className="mr-1" />
-        <span>
-          {tour.startDate && tour.endDate
-            ? calculateDuration(tour.startDate, tour.endDate)
-            : 'Duration varies'}
-        </span>
-      </div>
+                          <div className="flex items-center text-gray-600 mb-3">
+                            <CalendarDays size={16} className="mr-1" />
+                            <span>
+                              {tour.startDate && tour.endDate
+                                ? `${formatDate(tour.startDate)} - ${formatDate(tour.endDate)}`
+                                : 'Flexible dates'}
+                            </span>
+                          </div>
 
-      <div className="flex justify-end space-x-4">
-        <button
-          className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleSeeDetails(tour);
-          }}
-        >
-          View Details
-        </button>
-        <button
-          className={`px-4 py-2 text-white rounded ${
-            tour.availableSeats > 0
-              ? 'bg-orange-500 hover:bg-orange-600'
-              : 'bg-gray-400 cursor-not-allowed'
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            if (tour.availableSeats > 0) {
-              handleBookNow(tour);
-            }
-          }}
-          disabled={tour.availableSeats <= 0}
-        >
-          {tour.availableSeats > 0 ? 'Book Now' : 'Sold Out'}
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-                ))}
+                          <div className="flex items-center text-gray-600 mb-4">
+                            <Clock size={16} className="mr-1" />
+                            <span>
+                              {tour.startDate && tour.endDate
+                                ? calculateDuration(tour.startDate, tour.endDate)
+                                : 'Duration varies'}
+                            </span>
+                          </div>
+
+                          <div className="flex justify-end space-x-4">
+                            <button
+                              className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleSeeDetails(tour);
+                              }}
+                            >
+                              View Details
+                            </button>
+                            <button
+                              className={`px-4 py-2 text-white rounded ${
+                                tour.availableSeats > 0
+                                  ? 'bg-orange-500 hover:bg-orange-600'
+                                  : 'bg-gray-400 cursor-not-allowed'
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (tour.availableSeats > 0) {
+                                  handleBookNow(tour);
+                                }
+                              }}
+                              disabled={tour.availableSeats <= 0}
+                            >
+                              {tour.availableSeats > 0 ? 'Book Now' : 'Sold Out'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Pagination */}

@@ -72,7 +72,7 @@ const TrendingTours = () => {
   const handleFavorite = (tour: Tour) => {
   requireAuth(() => {
     const isCurrentlyFavorite = isFavorite(tour.id);
-    toggleFavorite(tour); // لم نعد بحاجة لإنشاء كائن جديد
+    toggleFavorite(tour); 
     
     const interaction: UserInteraction = {
       id: tour.id.toString(),

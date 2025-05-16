@@ -1,4 +1,4 @@
-import React from "react";
+
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import footerImage from "../assets/images/Footerimg.png";
 
@@ -63,22 +63,22 @@ const Footer = () => {
             {/* Newsletter Section */}
             <div className="col-lg-3 col-md-6 mb-4 flex-1 px-4 text-left">
               <h5 className="text-uppercase text-black text-2xl mb-4">Join Our Newsletter</h5>
-              <form className="flex items-center">
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="form-control border-0 rounded-none h-12 bg-[#f5f5f5] w-64 p-3"
-                />
-                <button
-                  type="submit"
-                  className="btn bg-[#DF6951] text-white rounded-none h-12 rounded-r-md px-6"
-                >
-                  Subscribe
-                </button>
-              </form>
               <p className="text-sm text-[#6c757d] mt-2">
                 *Receive weekly updates and exclusive tour packages.
               </p>
+            <div className="flex items-center gap-4">
+  <span className="text-black text-lg whitespace-nowrap">Become a Partner</span>
+ <button
+  className="bg-[#DF6951] hover:bg-[#c75a45] text-white px-4 py-2 rounded-md text-sm whitespace-nowrap"
+>
+  Get In Touch
+</button>
+
+
+</div>
+
+
+             
             </div>
 
             {/* Contact Section */}

@@ -72,9 +72,9 @@ const RomanticDestination = () => {
                 <div className="flex items-center space-x-4">
                   <img
                     src={
-                      tour.companyLogo?.startsWith('http')
-                        ? tour.companyLogo
-                        : `${API_BASE_URL}/${tour.companyLogo || 'default-company.png'}`
+                      tour.profileImageUrl?.startsWith('http')
+                        ? tour.profileImageUrl
+                        : `${API_BASE_URL}/${tour.profileImageUrl || 'default-company.png'}`
                     }
                     alt={tour.companyName}
                     className="w-16 h-16 rounded-full object-cover"

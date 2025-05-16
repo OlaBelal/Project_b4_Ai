@@ -86,19 +86,19 @@ export interface Tour {
   amenities: string[];
   companyId?: number;
   companyName?: string;
-  companyLogo?: string; 
+  profileImageUrl?: string; 
   imageUrls: string[];
-   image?: string; // نضيفها كخاصية اختيارية
-  tags?: string[]; // نضيفها كخاصية اختيارية
+   image?: string; 
+  tags?: string[]; 
   itineraries?: {
     dayNumber: number;
     activities: string[];
   }[];
   rating?: number;
-  // يمكن إضافة حقول أخرى حسب الحاجة
+  
 }
 
-// في ملف types.ts
+
 export interface Review {
   id: number;
   name: string; 

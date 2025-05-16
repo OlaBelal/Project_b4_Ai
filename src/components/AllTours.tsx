@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Star, MapPin, Heart } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useFavorites } from '../context/FavoritesContext';
 import { saveInteraction } from '../services/localStorageService';
 import { calculateTotal } from '../services/calculationService';
 import { UserInteraction } from '../interfaces/userInteraction';
-import { authService } from '../services/authService'
+import { authService } from '../services/authService';
 import { fetchTours } from '../services/travelService';
 import { Tour } from '../types';
 import { API_BASE_URL } from '../services/apiConfig';
@@ -22,7 +22,12 @@ const AllTours = () => {
     const loadTours = async () => {
       try {
         const data = await fetchTours();
-        setTours(data);
+        // Ensure the data matches the Tour type
+        const formattedTours = data.map(tour => ({
+          ...tour,
+          imageUrls: Array.isArray(tour.imageUrls) ? tour.imageUrls : [tour.imageUrls || '']
+        }));
+        setTours(formattedTours);
       } catch (err) {
         setError('Failed to load tours');
         console.error('Error loading tours:', err);
@@ -61,9 +66,9 @@ const AllTours = () => {
       
       navigate('/payment', {
         state: {
-          title: tour.title ,
+          title: tour.title,
           price: tour.price,
-          location:  tour.destinationCity,
+          location: tour.destinationCity,
         },
       });
     });
@@ -72,12 +77,7 @@ const AllTours = () => {
   const handleFavorite = (tour: Tour) => {
     requireAuth(() => {
       const isCurrentlyFavorite = isFavorite(tour.id);
-      // إنشاء كائن متوافق مع FavoriteTour
-      const favoriteTour = {
-        ...tour,
-        image: tour.imageUrls // تحويل imageUrl إلى image
-      };
-      toggleFavorite(favoriteTour);
+      toggleFavorite(tour);
       
       const interaction: UserInteraction = {
         id: tour.id.toString(),
@@ -156,7 +156,7 @@ const AllTours = () => {
     <section className="py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Most Popular Tours</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">All Available Tours</h2>
           <p className="text-lg text-gray-600">Discover your next adventure</p>
         </div>
 
@@ -184,28 +184,28 @@ const AllTours = () => {
                 </button>
 
                 <div className="relative">
-                <img
-  src={
-    tour.imageUrls?.length > 0
-      ? tour.imageUrls[0].startsWith('http')
-        ? tour.imageUrls[0]
-        : `${API_BASE_URL}/${tour.imageUrls[0]}`
-      : `${API_BASE_URL}/default-tour.jpg`
-  }
-  alt={tour.title}
-  className="w-full h-64 object-cover"
-  onError={(e) => {
-    (e.target as HTMLImageElement).src = `${API_BASE_URL}/default-tour.jpg`;
-  }}
-/>
-  <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full text-sm font-semibold text-orange-500">
-    £{tour.price}
-  </div>
-</div>
+                  <img
+                    src={
+                      tour.imageUrls?.length > 0
+                        ? tour.imageUrls[0].startsWith('http')
+                          ? tour.imageUrls[0]
+                          : `${API_BASE_URL}/${tour.imageUrls[0]}`
+                        : `${API_BASE_URL}/default-tour.jpg`
+                    }
+                    alt={tour.title}
+                    className="w-full h-64 object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = `${API_BASE_URL}/default-tour.jpg`;
+                    }}
+                  />
+                  <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full text-sm font-semibold text-orange-500">
+                    £{tour.price}
+                  </div>
+                </div>
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xl font-semibold text-gray-900">
-                      {tour.title || tour.title}
+                      {tour.title}
                     </h3>
                     <div className="flex items-center">
                       <Star size={16} className="text-yellow-400 fill-current" />
@@ -214,7 +214,7 @@ const AllTours = () => {
                   </div>
                   <div className="flex items-center text-gray-600 mb-4">
                     <MapPin size={16} className="mr-1" />
-                    <span className="text-sm">{  tour.destinationCity}</span>
+                    <span className="text-sm">{tour.destinationCity}</span>
                   </div>
                   <div className="flex space-x-4">
                     <button
@@ -222,7 +222,7 @@ const AllTours = () => {
                       onClick={() => tour.availableSeats > 0 && handleBookNow(tour)}
                       disabled={tour.availableSeats <= 0}
                     >
-                      {tour.availableSeats> 0 ? 'Book Now' : 'Sold Out'}
+                      {tour.availableSeats > 0 ? 'Book Now' : 'Sold Out'}
                     </button>
                     <button
                       className="w-1/2 bg-gray-200 text-gray-700 py-2 rounded-md hover:bg-gray-300 transition-colors"

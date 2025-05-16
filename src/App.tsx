@@ -68,13 +68,14 @@ function App() {
                   <Route path="/companies" element={<Companies />} />
                   <Route path="/events" element={<Events />} />
                   <Route path="/AllTours" element={<AllTours />} />
+                  <Route path="/companies/:companyId" element={<CompaniesPage />} />
 
                   {/* صفحات محمية */}
                   <Route element={<ProtectedRoute />}>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/payment" element={<PaymentPage />} />
                     <Route path="/favorites" element={<Favorites />} />
-                    <Route path="/companies/:companyId" element={<CompaniesPage />} />
+                    
                     <Route path="/payment-success" element={<PaymentSuccess />} />
                     <Route path="/payment-failed" element={<PaymentFailed />} />
                   </Route>

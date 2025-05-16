@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import travelImage from "../assets/images/image 1.png";
 import { authService } from "../services/authService";
@@ -26,6 +26,7 @@ interface GoogleCredentialResponse {
 
 const SignUp = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState<FormData>({
     name: "",
     email: "",
@@ -96,7 +97,14 @@ const SignUp = () => {
           email: formData.email,
           password: formData.password
         });
-        navigate("/dashboard");
+        
+        // التوجيه بعد التسجيل الناجح
+        const redirectPath = location.state?.from?.pathname;
+        if (redirectPath) {
+          navigate(redirectPath, { replace: true });
+        } else {
+          navigate(-1); // العودة للصفحة السابقة إذا لم يكن هناك مسار محفوظ
+        }
       } catch (error: any) {
         setApiError(error.message || "Registration failed. Please try again.");
       } finally {
@@ -114,7 +122,14 @@ const SignUp = () => {
       }
       
       await authService.googleLogin(credentialResponse.credential);
-      navigate("/dashboard");
+      
+      // نفس منطق التوجيه المستخدم في handleSubmit
+      const redirectPath = location.state?.from?.pathname;
+      if (redirectPath) {
+        navigate(redirectPath, { replace: true });
+      } else {
+        navigate(-1);
+      }
     } catch (error: any) {
       setApiError(error.message || "Google sign up failed. Please try again.");
     } finally {

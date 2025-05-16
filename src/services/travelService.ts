@@ -96,7 +96,97 @@ export const fetchTourDetails = async (id: number): Promise<Tour> => {
     throw error;
   }
 };
+export const fetchDiscountedTours = async (): Promise<Tour[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/Travel/discounted`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const responseData = await response.json();
+    
+    const toursData = responseData.items || responseData.data || responseData.tours || [];
+    
+    if (!Array.isArray(toursData)) {
+      throw new Error('Invalid data format: Expected array');
+    }
 
+    return toursData.map((tour: any): Tour => ({
+      id: tour.id,
+      title: tour.title || 'Untitled Tour',
+      description: tour.description || '',
+      price: tour.price || 0,
+      startDate: tour.startDate || '',
+      endDate: tour.endDate || '',
+      creationDate: tour.creationDate,
+      availableSeats: tour.availableSeats || 0,
+      departurePoint: tour.departurePoint || '',
+      departurePointLat: tour.departurePointLat,
+      departurePointLng: tour.departurePointLng,
+      destinationCity: tour.destinationCity || 'Unknown Destination',
+      destinationCityLat: tour.destinationCityLat,
+      destinationCityLng: tour.destinationCityLng,
+      transportationType: tour.transportationType || '',
+      amenities: Array.isArray(tour.amenities) ? tour.amenities : [],
+      companyId: tour.companyId,
+      companyName: tour.companyName || 'Unknown Company',
+      imageUrls: Array.isArray(tour.imageUrls) ? tour.imageUrls : [],
+      itineraries: Array.isArray(tour.itineraries) ? tour.itineraries : [],
+      rating: tour.rating
+    }));
+  } catch (error) {
+    console.error('Error fetching discounted tours:', error);
+    throw new Error('Failed to fetch discounted tours. Please try again later.');
+  }
+};
+// Add this to your travelService.ts file
+export const fetchLeavingSoonTours = async (): Promise<{ items: Tour[] }> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/Travel/leaving-soon`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const responseData = await response.json();
+    
+    const toursData = responseData.items || responseData.data || responseData.tours || [];
+    
+    if (!Array.isArray(toursData)) {
+      throw new Error('Invalid data format: Expected array');
+    }
+
+    return {
+      items: toursData.map((tour: any): Tour => ({
+        id: tour.id,
+        title: tour.title || 'Untitled Tour',
+        description: tour.description || '',
+        price: tour.price || 0,
+        startDate: tour.startDate || '',
+        endDate: tour.endDate || '',
+        creationDate: tour.creationDate,
+        availableSeats: tour.availableSeats || 0,
+        departurePoint: tour.departurePoint || '',
+        departurePointLat: tour.departurePointLat,
+        departurePointLng: tour.departurePointLng,
+        destinationCity: tour.destinationCity || 'Unknown Destination',
+        destinationCityLat: tour.destinationCityLat,
+        destinationCityLng: tour.destinationCityLng,
+        transportationType: tour.transportationType || '',
+        amenities: Array.isArray(tour.amenities) ? tour.amenities : [],
+        companyId: tour.companyId,
+        companyName: tour.companyName || 'Unknown Company',
+        imageUrls: Array.isArray(tour.imageUrls) ? tour.imageUrls : [],
+        itineraries: Array.isArray(tour.itineraries) ? tour.itineraries : [],
+        rating: tour.rating
+      }))
+    };
+  } catch (error) {
+    console.error('Error fetching leaving soon tours:', error);
+    throw new Error('Failed to fetch leaving soon tours. Please try again later.');
+  }
+};
 /*
 export const fetchTourReviews = async (tourId: number): Promise<Review[]> => {
   try {

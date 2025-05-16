@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
 import travelImage2 from "../assets/images/loginbag.jpg";
 import { authService } from "../services/authService"; 
@@ -17,6 +17,7 @@ interface GoogleCredentialResponse {
 
 const LogIn = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -81,44 +82,55 @@ const LogIn = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setApiError(null);
+ const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  setApiError(null);
 
-    if (validateForm()) {
-      try {
-        setIsLoading(true);
-        await authService.login(formData.email, formData.password);
-        navigate("/dashboard");
-      } catch (error: any) {
-        setApiError(
-          error.message ||
-            "Login failed. Please check your credentials and try again."
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    }
-  };
-
-  const handleGoogleLogin = async (
-    credentialResponse: GoogleCredentialResponse
-  ) => {
+  if (validateForm()) {
     try {
       setIsLoading(true);
+      await authService.login(formData.email, formData.password);
 
-      if (!credentialResponse.credential) {
-        throw new Error("No credential received from Google");
+      const from = location.state?.from?.pathname;
+      if (from) {
+        navigate(from, { replace: true });
+      } else {
+        navigate(-1); // ارجع صفحة واحدة للوراء لو مافيش from
       }
-
-      await authService.googleLogin(credentialResponse.credential);
-      navigate("/dashboard");
     } catch (error: any) {
-      setApiError(error.message || "Google login failed. Please try again.");
+      setApiError(
+        error.message ||
+          "Login failed. Please check your credentials and try again."
+      );
     } finally {
       setIsLoading(false);
     }
-  };
+  }
+};
+
+const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse) => {
+  try {
+    setIsLoading(true);
+
+    if (!credentialResponse.credential) {
+      throw new Error("No credential received from Google");
+    }
+
+    await authService.googleLogin(credentialResponse.credential);
+
+    const redirectPath = location.state?.from?.pathname;
+    if (redirectPath) {
+      navigate(redirectPath, { replace: true });
+    } else {
+      navigate(-1);
+    }
+  } catch (error: any) {
+    setApiError(error.message || "Google login failed. Please try again.");
+  } finally {
+    setIsLoading(false);
+  }
+};
+
 
   return (
     <div className="flex h-screen bg-gray-100">

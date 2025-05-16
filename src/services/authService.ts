@@ -17,6 +17,7 @@ interface User {
   name: string;
   email: string;
   token?: string;
+  avatar?: string; 
 }
 
 export const authService = {
@@ -124,6 +125,10 @@ export const authService = {
     }
   },
 
+  getToken: (): string | null => {
+    return localStorage.getItem('token');
+  },
+
   isAuthenticated: (): boolean => {
     const token = localStorage.getItem('token');
     const isAuth = localStorage.getItem('isAuthenticated');
@@ -137,16 +142,16 @@ export const authService = {
     return password.length >= 8 && hasLetter && hasNumber && hasSpecialChar;
   },
 
- forgotPassword: async (email: string): Promise<void> => {
-  try {
-    await axios.post(`${API_BASE_URL}/forgotpassword`, {
-      email: email,
-      url: `${RESET_PASSWORD_URL}email=${encodeURIComponent(email)}&token=`, 
-    });
-  } catch (error) {
-    throw new Error("Failed to send reset link");
-  }
-},
+  forgotPassword: async (email: string): Promise<void> => {
+    try {
+      await axios.post(`${API_BASE_URL}/forgotpassword`, {
+        email: email,
+        url: `${RESET_PASSWORD_URL}email=${encodeURIComponent(email)}&token=`, 
+      });
+    } catch (error) {
+      throw new Error("Failed to send reset link");
+    }
+  },
 
   resetPassword: async (email: string, token: string, newPassword: string): Promise<void> => {
     try {
@@ -157,7 +162,6 @@ export const authService = {
       });
 
       if (response.status === 200) {
-        // تنظيف التخزين المؤقت بعد نجاح إعادة التعيين
         localStorage.removeItem("resetEmail");
         localStorage.removeItem("resetToken");
       }

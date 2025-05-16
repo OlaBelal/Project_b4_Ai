@@ -1,10 +1,13 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Tour } from '../types';
 import { API_BASE_URL } from '../services/apiConfig';
 import { Heart } from 'lucide-react';
 import { useFavorites } from '../context/FavoritesContext';
 import { authService } from '../services/authService';
+import { saveInteraction } from '../services/localStorageService';
+import { calculateTotal } from '../services/calculationService';
+import { UserInteraction } from '../interfaces/userInteraction';
 
 interface TabInformationProps {
   tour: Tour;
@@ -12,6 +15,7 @@ interface TabInformationProps {
 
 const TabInformation: React.FC<TabInformationProps> = ({ tour }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toggleFavorite, isFavorite } = useFavorites();
 
   // Helper function to calculate duration
@@ -37,13 +41,30 @@ const TabInformation: React.FC<TabInformationProps> = ({ tour }) => {
 
   // Handle favorite button click
   const handleFavoriteClick = () => {
+    const action = () => {
+      const isCurrentlyFavorite = isFavorite(tour.id);
+      toggleFavorite(tour);
+      
+      const interaction: UserInteraction = {
+        id: tour.id.toString(),
+        type: 'travel',
+        checkout: 0,
+        favourite: !isCurrentlyFavorite,
+        booked: false,
+        total: 0
+      };
+      
+      interaction.total = calculateTotal(interaction);
+      saveInteraction(interaction);
+    };
+
     if (!authService.isAuthenticated()) {
       if (window.confirm('You need to login first. Do you want to login now?')) {
-        navigate('/login');
+        navigate('/login', { state: { from: location.pathname } });
       }
       return;
     }
-    toggleFavorite(tour);
+    action();
   };
 
   return (
@@ -57,7 +78,14 @@ const TabInformation: React.FC<TabInformationProps> = ({ tour }) => {
             className="p-2 rounded-full hover:bg-gray-100 transition-colors"
             aria-label={isFavorite(tour.id) ? 'Remove from favorites' : 'Add to favorites'}
           >
-            
+            <Heart
+              size={28}
+              className={ 
+                isFavorite(tour.id)
+                  ? 'text-red-500 fill-current'
+                  : 'text-gray-400 hover:text-red-500'
+              }
+            />
           </button>
           <p className="text-orange-600 text-xl font-semibold mr-8">£{tour.price} / Per person </p>
           <div
@@ -69,14 +97,6 @@ const TabInformation: React.FC<TabInformationProps> = ({ tour }) => {
           >
             {tour.availableSeats > 0 ? 'Available' : 'Sold Out'}
           </div>
-          <Heart
-              size={28}
-              className={ 
-                isFavorite(tour.id)
-                  ? 'text-red-500 fill-current'
-                  : 'text-gray-400 hover:text-red-500'
-              }
-            />
         </div>
       </div>
 
@@ -84,7 +104,7 @@ const TabInformation: React.FC<TabInformationProps> = ({ tour }) => {
       {tour.companyName && (
         <div className="flex items-center mb-4">
           <img
-            src={tour.companyLogo || `${API_BASE_URL}/default-company.png`}
+            src={tour.profileImageUrl || `${API_BASE_URL}/default-company.png`}
             alt={tour.companyName}
             className="w-12 h-12 rounded-full mr-4"
             onError={(e) => {
