@@ -53,11 +53,11 @@ function App() {
                   <Route path="/travel-with-us" element={<TravelWithUs />} />
                   <Route 
                     path="/signup" 
-                    element={authService.isAuthenticated() ? <Navigate to="/dashboard" /> : <SignUp />} 
+                    element={<SignUp />}
                   />
                   <Route 
                     path="/login" 
-                    element={authService.isAuthenticated() ? <Navigate to="/dashboard" /> : <LogIn />} 
+                    element={<LogIn />} 
                   />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/contactus" element={<ContactUsForm />} />

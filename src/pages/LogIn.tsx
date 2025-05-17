@@ -28,8 +28,10 @@ const LogIn = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignUpRedirect = () => {
-    navigate("/signup");
-  };
+  
+  navigate("/signup", { state: { fromBeforeSignUp: location.pathname } });
+};
+
 
   const handleForgotPassword = async () => {
     if (!formData.email) {
