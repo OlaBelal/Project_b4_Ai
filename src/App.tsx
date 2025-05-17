@@ -23,7 +23,7 @@ import Events from './pages/Events';
 import { setupWeeklySubmission } from './services/schedulerService';
 import { UserProvider } from './context/UserContext';
 import ProtectedRoute from './components/ProtectedRoute';
-import Dashboard from './pages/Dashboard';
+
 import { authService } from './services/authService';
 import ResetPassword from './pages/ResetPassword';
 import AllTours from './components/AllTours';
@@ -72,7 +72,7 @@ function App() {
 
                   {/* صفحات محمية */}
                   <Route element={<ProtectedRoute />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
+                    
                     <Route path="/payment" element={<PaymentPage />} />
                     <Route path="/favorites" element={<Favorites />} />
                     

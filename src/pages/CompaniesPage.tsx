@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { X, ChevronRight } from 'lucide-react';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import axios from 'axios';
@@ -53,30 +53,6 @@ interface Company {
   workingHours: WorkingHour[];
 }
 
-interface Post {
-  id: number;
-  userName: string;
-  userProfile: string;
-  time: string;
-  text: string;
-  image?: string;
-}
-
-interface SimilarCompany {
-  id: number;
-  name: string;
-  image: string;
-  email: string;
-}
-
-interface UpcomingTravel {
-  id: number;
-  location: string;
-  image: string;
-  date: string;
-  daysLeft: number;
-}
-
 interface Review {
   id: string;
   userId: string;
@@ -88,21 +64,24 @@ interface Review {
   date: string;
 }
 
+interface SimilarCompany {
+  id: number;
+  name: string;
+  image: string;
+  email: string;
+}
+
 const API_BASE_URL = 'https://journeymate.runasp.net';
 
 const CompaniesPage: React.FC = () => {
   const { companyId } = useParams<{ companyId: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("Photos");
   const [isFollowing, setIsFollowing] = useState<boolean>(false);
   const [showWorkingTimesModal, setShowWorkingTimesModal] = useState<boolean>(false);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [similarCompanies, setSimilarCompanies] = useState<SimilarCompany[]>([]);
-  const [upcomingTravels, setUpcomingTravels] = useState<UpcomingTravel[]>([]);
   const [workingHoursFormatted, setWorkingHoursFormatted] = useState<{day: string, hours: string}[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [showReviewForm, setShowReviewForm] = useState<boolean>(false);
@@ -111,6 +90,7 @@ const CompaniesPage: React.FC = () => {
     text: '',
   });
   const [currentUser, setCurrentUser] = useState(authService.getCurrentUser());
+  const [similarCompanies, setSimilarCompanies] = useState<SimilarCompany[]>([]);
 
   const getCompanyDetails = async (id: number): Promise<Company> => {
     try {
@@ -118,6 +98,47 @@ const CompaniesPage: React.FC = () => {
       return response.data;
     } catch (error) {
       throw new Error('Failed to fetch company details');
+    }
+  };
+
+  const fetchSimilarCompanies = async (currentCompanyId: number) => {
+    try {
+      
+      const allSimilarCompanies = [
+        {
+          id: 1,
+          name: 'Adventure Travels',
+          image: 'https://images.unsplash.com/photo-1584132967334-10e028bd69f7?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+          email: 'contact@adventure-travels.com'
+        },
+        {
+          id: 2,
+          name: 'Explore Worldwide',
+          image: 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+          email: 'info@explore-worldwide.com'
+        },
+        {
+          id: 3,
+          name: 'Global Journeys',
+          image: 'https://images.unsplash.com/photo-1503220317375-aaad61436b1b?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+          email: 'support@global-journeys.com'
+        },
+        {
+          id: 4,
+          name: 'Travel Experts',
+          image: 'https://images.unsplash.com/photo-1527631746610-bca00a040d60?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
+          email: 'info@travel-experts.com'
+        }
+      ];
+
+      // تصفية الشركات المشابهة لإزالة الشركة الحالية
+      const filteredCompanies = allSimilarCompanies.filter(
+        company => company.id !== currentCompanyId
+      ).slice(0, 3); // أخذ أول 3 شركات فقط
+
+      setSimilarCompanies(filteredCompanies);
+    } catch (error) {
+      console.error('Error fetching similar companies:', error);
     }
   };
 
@@ -129,47 +150,47 @@ const CompaniesPage: React.FC = () => {
 
   const saveReview = (review: Review) => {
     const allReviews = JSON.parse(localStorage.getItem('companyReviews') || '[]');
-    
-    // Remove any existing review by this user for this company
     const updatedReviews = allReviews.filter(
       (existingReview: Review) => !(existingReview.userId === review.userId && existingReview.companyId === review.companyId)
     );
-    
     updatedReviews.push(review);
     localStorage.setItem('companyReviews', JSON.stringify(updatedReviews));
     loadReviews();
   };
 
-  const calculateDaysLeft = (dateString: string): number => {
-    const today = new Date();
-    const targetDate = new Date(dateString);
-    const differenceInTime = targetDate.getTime() - today.getTime();
-    return Math.ceil(differenceInTime / (1000 * 60 * 60 * 24));
-  };
-
   const formatWorkingHours = (workingHours: WorkingHour[]): {day: string, hours: string}[] => {
+    if (!workingHours || workingHours.length === 0) return [];
     return workingHours.map(item => ({
       day: item.dayOfWeek,
-      hours: item.workingTime
+      hours: item.workingTime || 'CLOSED'
     }));
   };
 
   const isOpenNow = (): boolean => {
-    if (workingHoursFormatted.length === 0) return false;
+    if (!workingHoursFormatted || workingHoursFormatted.length === 0) return false;
     
     const now = new Date();
     const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
     const todayHours = workingHoursFormatted.find(item => item.day === today);
     
-    if (!todayHours || todayHours.hours === 'CLOSED') return false;
+    if (!todayHours || !todayHours.hours || todayHours.hours === 'CLOSED') return false;
     if (todayHours.hours === '24/7') return true;
     
-    const [openTime, closeTime] = todayHours.hours.split(' - ');
-    const currentHour = now.getHours();
-    const openingHour = parseInt(openTime.split(':')[0]);
-    const closingHour = parseInt(closeTime.split(':')[0]);
-    
-    return currentHour >= openingHour && currentHour < closingHour;
+    if (typeof todayHours.hours !== 'string' || !todayHours.hours.includes(' - ')) {
+      return false;
+    }
+
+    try {
+      const [openTime, closeTime] = todayHours.hours.split(' - ');
+      const currentHour = now.getHours();
+      const openingHour = parseInt(openTime.split(':')[0]);
+      const closingHour = parseInt(closeTime.split(':')[0]);
+      
+      return currentHour >= openingHour && currentHour < closingHour;
+    } catch (error) {
+      console.error('Error parsing working hours:', error);
+      return false;
+    }
   };
 
   const renderStarRating = (rating: number): JSX.Element => {
@@ -186,10 +207,6 @@ const CompaniesPage: React.FC = () => {
 
   const handleTravelClick = (travel: Travel) => {
     navigate('/travel-with-us', { state: { tour: travel } });
-  };
-
-  const handleSimilarCompanyClick = (companyId: number) => {
-    navigate(`/companies/${companyId}`);
   };
 
   const handleReviewSubmit = async (event: React.FormEvent) => {
@@ -339,34 +356,7 @@ const CompaniesPage: React.FC = () => {
 
   const renderTabContent = (): JSX.Element => {
     switch (activeTab) {
-      case "Posts":
-        return (
-          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
-            {posts.length > 0 ? (
-              posts.map(post => (
-                <div key={post.id} className="mb-6">
-                  <div className="flex items-center mb-3">
-                    <img src={post.userProfile} alt={post.userName} className="w-10 h-10 rounded-full mr-3" />
-                    <div>
-                      <h3 className="font-semibold">{post.userName}</h3>
-                      <p className="text-sm text-gray-600">{new Date(post.time).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                  <p className="text-gray-800 mb-3">{post.text}</p>
-                  {post.image && <img src={post.image} alt="Post" className="w-full h-64 object-cover rounded-lg" />}
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-center py-10">No posts available</p>
-            )}
-          </div>
-        );
-      case "Description":
-        return (
-          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
-            <p className="text-gray-800">{company?.description}</p>
-          </div>
-        );
+      
       case "Photos":
         return (
           <div className="bg-white p-5 rounded-lg shadow-md mb-5">
@@ -388,6 +378,12 @@ const CompaniesPage: React.FC = () => {
                 ))
               )}
             </div>
+          </div>
+        );
+        case "Description":
+        return (
+          <div className="bg-white p-5 rounded-lg shadow-md mb-5">
+            <p className="text-gray-800">{company?.description}</p>
           </div>
         );
       case "Travels":
@@ -480,49 +476,8 @@ const CompaniesPage: React.FC = () => {
         
         setCompany(companyData);
         setWorkingHoursFormatted(formatWorkingHours(companyData.workingHours));
-
-        const upcoming = companyData.travels
-          .filter(travel => calculateDaysLeft(travel.startDate) > 0)
-          .map(travel => ({
-            id: travel.id,
-            location: travel.destinationCity,
-            image: travel.coverImageUrl || travel.imageUrls?.[0] || '',
-            date: travel.startDate,
-            daysLeft: calculateDaysLeft(travel.startDate)
-          }));
-        setUpcomingTravels(upcoming);
-
-        setPosts([{
-          id: 1,
-          userName: 'Company Admin',
-          userProfile: 'https://randomuser.me/api/portraits/lego/1.jpg',
-          time: new Date().toISOString(),
-          text: 'Welcome to our company page!',
-          image: 'https://via.placeholder.com/600x400'
-        }]);
-
-        setSimilarCompanies([
-          {
-            id: 1,
-            name: 'Adventure Travel Co.',
-            image: 'https://images.unsplash.com/photo-1582719471386-8b63b3d8d6b1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
-            email: 'adventure@example.com'
-          },
-          {
-            id: 2,
-            name: 'Explore Egypt Tours',
-            image: 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1368&q=80',
-            email: 'explore@example.com'
-          },
-          {
-            id: 3,
-            name: 'Nile Cruises',
-            image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80',
-            email: 'nile@example.com'
-          }
-        ]);
-
         loadReviews();
+        fetchSimilarCompanies(Number(companyId));
 
       } catch (error) {
         setError(error instanceof Error ? error.message : 'An unknown error occurred');
@@ -686,6 +641,7 @@ const CompaniesPage: React.FC = () => {
 
           <div className="flex-1">
             <div className="flex justify-between border-b-2 border-gray-200 mb-5">
+              
               <button 
                 className={`pb-2 px-4 text-gray-600 font-semibold ${activeTab === "Photos" ? "border-b-2 border-[#DF6951]" : ""}`}
                 onClick={() => setActiveTab("Photos")}
@@ -720,53 +676,73 @@ const CompaniesPage: React.FC = () => {
           }`}>
             <div className="bg-white p-5 rounded-lg shadow-md mb-5">
               <h2 className="text-xl font-bold mb-5 text-orange-500">Upcoming Travels</h2>
-              {upcomingTravels.length > 0 ? (
-                upcomingTravels.map(travel => (
-                  <div 
-                    key={travel.id} 
-                    className="flex items-center mb-4 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                    onClick={() => handleTravelClick(company.travels.find(t => t.id === travel.id)!)}
-                  >
-                    <img
-                      src={travel.image}
-                      alt={travel.location}
-                      className="w-12 h-12 rounded-full mr-3 object-cover"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-semibold">{travel.location}</h3>
-                      <p className="text-sm text-gray-600">
-                        {new Date(travel.date).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {travel.daysLeft} days left
-                    </div>
-                  </div>
-                ))
+              {company.travels && company.travels.length > 0 ? (
+                company.travels
+                  .filter(travel => {
+                    const startDate = new Date(travel.startDate);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    return startDate > today;
+                  })
+                  .slice(0, 3)
+                  .map(travel => {
+                    const startDate = new Date(travel.startDate);
+                    const today = new Date();
+                    const daysLeft = Math.ceil((startDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                    
+                    return (
+                      <div 
+                        key={travel.id} 
+                        className="flex items-center mb-4 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                        onClick={() => handleTravelClick(travel)}
+                      >
+                        <img
+                          src={travel.coverImageUrl || travel.imageUrls?.[0] || 'https://via.placeholder.com/150'}
+                          alt={travel.title}
+                          className="w-12 h-12 rounded-full mr-3 object-cover"
+                        />
+                        <div className="flex-1">
+                          <h3 className="font-semibold">{travel.destinationCity}</h3>
+                          <p className="text-sm text-gray-600">
+                            {startDate.toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {daysLeft} {daysLeft === 1 ? 'day' : 'days'} left
+                        </div>
+                      </div>
+                    );
+                  })
               ) : (
                 <p className="text-gray-500">No upcoming travels scheduled</p>
               )}
             </div>
-            
-            <div className="bg-white p-5 rounded-lg shadow-md mt-5">
+
+            <div className="bg-white p-5 rounded-lg shadow-md mb-5">
               <h2 className="text-xl font-bold mb-5 text-orange-500">Similar Companies</h2>
-              {similarCompanies.map(company => (
-                <div 
-                  key={company.id} 
-                  className="flex items-center mb-4 cursor-pointer hover:bg-gray-50 p-2 rounded"
-                  onClick={() => handleSimilarCompanyClick(company.id)}
-                >
-                  <img
-                    src={company.image}
-                    alt={company.name}
-                    className="w-12 h-12 rounded-full mr-3 object-cover"
-                  />
-                  <div>
-                    <h3 className="font-semibold">{company.name}</h3>
-                    <p className="text-sm text-gray-600">{company.email}</p>
-                  </div>
+              {similarCompanies.length > 0 ? (
+                <div className="space-y-4">
+                  {similarCompanies.map(similarCompany => (
+                    <div 
+                      key={similarCompany.id} 
+                      className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded"
+                      onClick={() => navigate(`/companies/${similarCompany.id}`)}
+                    >
+                      <img
+                        src={similarCompany.image}
+                        alt={similarCompany.name}
+                        className="w-12 h-12 rounded-full mr-3 object-cover"
+                      />
+                      <div>
+                        <h3 className="font-semibold">{similarCompany.name}</h3>
+                        <p className="text-sm text-gray-600 truncate w-40">{similarCompany.email}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              ) : (
+                <p className="text-gray-500">No similar companies found</p>
+              )}
             </div>
           </div>
         </div>
