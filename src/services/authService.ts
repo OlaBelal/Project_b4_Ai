@@ -16,19 +16,33 @@ interface User {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   token?: string;
-  avatar?: string; 
+  avatar?: string;
+}
+
+// دالة مساعدة لفك تشفير JWT
+function decodeJWT(token: string): any {
+  const base64Url = token.split('.')[1];
+  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  const jsonPayload = decodeURIComponent(
+    atob(base64)
+      .split('')
+      .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+      .join('')
+  );
+  return JSON.parse(jsonPayload);
 }
 
 export const authService = {
   register: async (userData: { 
-    name: string; 
+    userName: string; 
     email: string; 
     password: string 
   }): Promise<User> => {
     try {
       const response = await axios.post<AuthResponse>(`${API_BASE_URL}/register`, {
-        userName: userData.name,
+        userName: userData.userName,
         email: userData.email,
         password: userData.password
       });
@@ -39,7 +53,7 @@ export const authService = {
 
       const user: User = {
         id: response.data.userId || Date.now().toString(),
-        name: response.data.userName || userData.name,
+        name: response.data.userName || userData.userName,
         email: response.data.email || userData.email,
         token: response.data.token
       };
@@ -178,6 +192,10 @@ export const authService = {
 
   googleLogin: async (credential: string): Promise<User> => {
     try {
+      // فك تشفير الـ credential لاستخراج بيانات المستخدم
+      const decodedToken = decodeJWT(credential);
+      const { name, email, picture } = decodedToken;
+
       const response = await axios.post<AuthResponse>(
         `${API_BASE_URL}/googlelogin`,
         credential,
@@ -195,9 +213,10 @@ export const authService = {
 
       const user: User = {
         id: response.data.userId || Date.now().toString(),
-        name: response.data.userName || 'Google User',
-        email: response.data.email || '',
-        token: response.data.token
+        name: name || response.data.userName || email,
+        email: email || response.data.email || '',
+        token: response.data.token,
+        avatar: picture
       };
 
       localStorage.setItem('currentUser', JSON.stringify(user));
@@ -217,5 +236,65 @@ export const authService = {
       
       throw new Error(errorMessage);
     }
+  },
+
+  updateUser: async (userData: {
+    name: string;
+    email: string;
+    phone?: string;
+  }): Promise<User> => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const response = await axios.put<AuthResponse>(
+        `${API_BASE_URL}/updateuser`,
+        {
+          name: userData.name,
+          email: userData.email,
+          phone: userData.phone
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (!response.data || !response.data.token) {
+        throw new Error(response.data?.message || 'Update failed');
+      }
+
+      const user: User = {
+        id: response.data.userId || '',
+        name: response.data.userName || userData.name,
+        email: response.data.email || userData.email,
+        phone: userData.phone,
+        token: response.data.token
+      };
+
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      return user;
+    } catch (error: any) {
+      if (error.response) {
+        throw new Error(error.response.data?.message || error.response.data || 'Update failed');
+      } else if (error.request) {
+        throw new Error('No response from server');
+      } else {
+        throw new Error(error.message || 'Update failed');
+      }
+    }
   }
+};
+
+// دالة لإنشاء هيدر التخويل
+export const getAuthHeader = () => {
+  const token = localStorage.getItem('token');
+  return {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  };
 };

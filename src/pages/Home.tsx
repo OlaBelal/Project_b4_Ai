@@ -9,6 +9,7 @@ import TrendingTours from '../components/TrendingTours';
 import Testimonials from '../components/Testimonials';
 import DiscountedTours from '../components/DiscountedTours';
 import LeavingSoonTours from '../components/LeavingSoonTours';
+import NewestTours from '../components/NewestTours';
 const Home = () => {
   return (
     <>
@@ -20,6 +21,7 @@ const Home = () => {
       <AIEvents />
       <RomanticDestination />
       
+      <NewestTours/>
       <PopularDestinations />
       <TrendingTours />
       <Testimonials />

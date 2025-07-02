@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import { useTranslation } from 'react-i18next';
 import travelImage from "../assets/images/image 1.png";
 import { authService } from "../services/authService";
 
@@ -25,6 +26,7 @@ interface GoogleCredentialResponse {
 }
 
 const SignUp = () => {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [formData, setFormData] = useState<FormData>({
@@ -58,27 +60,32 @@ const SignUp = () => {
   const validateForm = (): boolean => {
     const newErrors: Errors = {};
 
+    // Name validation - allows letters, spaces, apostrophes, hyphens, and Arabic characters
     if (!formData.name.trim()) {
-      newErrors.name = "Name is required";
+      newErrors.name = t('signUp.errors.nameRequired');
+    } else if (!/^[\p{L}\s'-]+$/u.test(formData.name.trim())) {
+      newErrors.name = t('signUp.errors.invalidName');
     }
 
+    // Email validation
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = t('signUp.errors.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = t('signUp.errors.invalidEmail');
     }
 
+    // Password validation
     if (!formData.password) {
-      newErrors.password = "Password is required";
-    } else if (!authService.validatePassword(formData.password)) {
-      newErrors.password =
-        "Password must be at least 8 characters long and include letters, numbers, and special characters.";
+      newErrors.password = t('signUp.errors.passwordRequired');
+    } else if (formData.password.length < 8) {
+      newErrors.password = t('signUp.errors.passwordTooShort');
     }
 
+    // Confirm password validation
     if (!formData.confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password";
+      newErrors.confirmPassword = t('signUp.errors.confirmPasswordRequired');
     } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match";
+      newErrors.confirmPassword = t('signUp.errors.passwordsNotMatch');
     }
 
     setErrors(newErrors);
@@ -92,21 +99,28 @@ const SignUp = () => {
     if (validateForm()) {
       try {
         setIsLoading(true);
-        await authService.register({
-          name: formData.name,
-          email: formData.email,
+        const response = await authService.register({
+          userName: formData.name.replace(/\s+/g, ''), 
+
+          email: formData.email.trim(),
           password: formData.password
         });
         
-        // التوجيه بعد التسجيل الناجح
-        const redirectPath = location.state?.from?.pathname;
-        if (redirectPath) {
-          navigate(redirectPath, { replace: true });
-        } else {
-          navigate(-1); // العودة للصفحة السابقة إذا لم يكن هناك مسار محفوظ
-        }
+        // Store user data
+        const user = {
+          id: response.id,
+          name: response.name,
+          email: response.email,
+          phone: '',
+          token: response.token
+        };
+        localStorage.setItem('currentUser', JSON.stringify(user));
+        
+        // Redirect after successful registration
+        const redirectPath = location.state?.from?.pathname || "/AccountPage";
+        navigate(redirectPath, { replace: true });
       } catch (error: any) {
-        setApiError(error.message || "Registration failed. Please try again.");
+        setApiError(error.message || t('signUp.errors.registrationFailed'));
       } finally {
         setIsLoading(false);
       }
@@ -118,32 +132,39 @@ const SignUp = () => {
       setIsLoading(true);
       
       if (!credentialResponse.credential) {
-        throw new Error('No credential received from Google');
+        throw new Error(t('signUp.errors.noGoogleCredential'));
       }
       
-      await authService.googleLogin(credentialResponse.credential);
+      const user = await authService.googleLogin(credentialResponse.credential);
       
-      // نفس منطق التوجيه المستخدم في handleSubmit
-      const redirectPath = location.state?.from?.pathname;
-      if (redirectPath) {
-        navigate(redirectPath, { replace: true });
-      } else {
-        navigate(-1);
-      }
+      // Store Google user data
+      const completeUser = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: '',
+        token: user.token,
+        avatar: user.avatar
+      };
+      localStorage.setItem('currentUser', JSON.stringify(completeUser));
+      
+      // Redirect after successful Google signup
+      const redirectPath = location.state?.from?.pathname || "/AccountPage";
+      navigate(redirectPath, { replace: true });
     } catch (error: any) {
-      setApiError(error.message || "Google sign up failed. Please try again.");
+      setApiError(error.message || t('signUp.errors.googleSignUpFailed'));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className={`flex h-screen bg-gray-100 ${i18n.language === 'ar' ? 'text-right' : 'text-left'}`}>
       {/* Left Half: Image */}
       <div className="hidden md:flex flex-1 justify-center items-center bg-white">
         <img
           src={travelImage}
-          alt="Travel"
+          alt={t('signUp.travelImageAlt')}
           className="max-w-full max-h-full object-cover"
         />
       </div>
@@ -152,10 +173,10 @@ const SignUp = () => {
       <div className="flex-1 flex flex-col justify-center items-center bg-white p-4">
         <div className="w-full max-w-md">
           <h1 className="text-center mb-2 font-yesteryear text-5xl text-[#DF6951]">
-            Sign Up
+            {t('signUp.title')}
           </h1>
           <p className="text-center mb-5 text-gray-600 text-lg font-volkhov">
-            Pack your bags and explore the world!
+            {t('signUp.subtitle')}
           </p>
           
           {apiError && (
@@ -168,7 +189,7 @@ const SignUp = () => {
             {/* Name Field */}
             <div className="mb-4">
               <label htmlFor="name" className="block mb-2 text-gray-700">
-                Name
+                {t('signUp.nameLabel')}
               </label>
               <input
                 type="text"
@@ -180,6 +201,7 @@ const SignUp = () => {
                   errors.name ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#DF6951]'
                 }`}
                 disabled={isLoading}
+                placeholder={t('signUp.namePlaceholder')}
               />
               {errors.name && (
                 <p className="text-red-500 text-xs mt-1">{errors.name}</p>
@@ -189,7 +211,7 @@ const SignUp = () => {
             {/* Email Field */}
             <div className="mb-4">
               <label htmlFor="email" className="block mb-2 text-gray-700">
-                Email
+                {t('signUp.emailLabel')}
               </label>
               <input
                 type="email"
@@ -201,6 +223,7 @@ const SignUp = () => {
                   errors.email ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#DF6951]'
                 }`}
                 disabled={isLoading}
+                placeholder={t('signUp.emailPlaceholder')}
               />
               {errors.email && (
                 <p className="text-red-500 text-xs mt-1">{errors.email}</p>
@@ -210,7 +233,7 @@ const SignUp = () => {
             {/* Password Field */}
             <div className="mb-4">
               <label htmlFor="password" className="block mb-2 text-gray-700">
-                Password
+                {t('signUp.passwordLabel')}
               </label>
               <input
                 type="password"
@@ -222,6 +245,7 @@ const SignUp = () => {
                   errors.password ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#DF6951]'
                 }`}
                 disabled={isLoading}
+                placeholder={t('signUp.passwordPlaceholder')}
               />
               {errors.password && (
                 <p className="text-red-500 text-xs mt-1">{errors.password}</p>
@@ -231,7 +255,7 @@ const SignUp = () => {
             {/* Confirm Password Field */}
             <div className="mb-6">
               <label htmlFor="confirm-password" className="block mb-2 text-gray-700">
-                Confirm Password
+                {t('signUp.confirmPasswordLabel')}
               </label>
               <input
                 type="password"
@@ -243,6 +267,7 @@ const SignUp = () => {
                   errors.confirmPassword ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-[#DF6951]'
                 }`}
                 disabled={isLoading}
+                placeholder={t('signUp.confirmPasswordPlaceholder')}
               />
               {errors.confirmPassword && (
                 <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>
@@ -257,24 +282,24 @@ const SignUp = () => {
               }`}
               disabled={isLoading}
             >
-              {isLoading ? 'Creating Account...' : 'Sign Up'}
+              {isLoading ? t('signUp.creatingAccount') : t('signUp.signUpButton')}
             </button>
 
             {/* Divider */}
             <div className="flex items-center my-6">
               <div className="flex-grow border-t border-gray-300"></div>
-              <span className="mx-4 text-gray-500">or</span>
+              <span className="mx-4 text-gray-500">{t('signUp.orDivider')}</span>
               <div className="flex-grow border-t border-gray-300"></div>
             </div>
 
             {/* Google Sign Up Button */}
             <div className="mb-6">
-              <GoogleOAuthProvider clientId="822773664134-n09666thqoc67ee4rhkfjetb51ep0vg5.apps.googleusercontent.com">
+              <GoogleOAuthProvider clientId="YOUR_GOOGLE_CLIENT_ID">
                 <div className={`${isLoading ? 'opacity-70 pointer-events-none' : ''}`}>
                   <GoogleLogin
                     onSuccess={handleGoogleSignUp}
                     onError={() => {
-                      setApiError("Google sign up failed. Please try again.");
+                      setApiError(t('signUp.errors.googleSignUpFailed'));
                     }}
                     width="100%"
                     size="large"
@@ -289,14 +314,14 @@ const SignUp = () => {
 
             {/* Login Redirect */}
             <p className="text-center text-gray-600 text-sm">
-              Already have an account?{" "}
+              {t('signUp.alreadyHaveAccount')}{" "}
               <button
                 type="button"
                 onClick={handleLoginRedirect}
                 className="text-[#DF6951] hover:text-[#C6533E] font-bold"
                 disabled={isLoading}
               >
-                Log in
+                {t('signUp.loginLink')}
               </button>
             </p>
           </form>

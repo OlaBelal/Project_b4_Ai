@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Star, MapPin, Clock, CalendarDays, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { fetchTours, fetchDiscountedTours, fetchLeavingSoonTours } from '../services/travelService';
+import { fetchTours, fetchDiscountedTours, fetchLeavingSoonTours, fetchNewestTours, fetchCategories } from '../services/travelService';
 import { Tour } from '../types';
 import { UserInteraction } from '../interfaces/userInteraction';
 import { API_BASE_URL } from '../services/apiConfig';
@@ -11,77 +11,114 @@ import { useFavorites } from '../context/FavoritesContext';
 import { authService } from '../services/authService';
 
 const Travels = () => {
-  // States initialization
   const [regularTours, setRegularTours] = useState<Tour[]>([]);
   const [discountedTours, setDiscountedTours] = useState<Tour[]>([]);
   const [leavingSoonTours, setLeavingSoonTours] = useState<Tour[]>([]);
+  const [newestTours, setNewestTours] = useState<Tour[]>([]);
+  const [categories, setCategories] = useState<{id: number, categoryName: string}[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [priceRange, setPriceRange] = useState({ min: '', max: '' });
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
   
   const navigate = useNavigate();
   const location = useLocation();
   const { toggleFavorite, isFavorite } = useFavorites();
+  const userId = authService.getCurrentUser()?.id || 'anonymous';
 
-  // Categories list
-  const categories = [
-    "Beach & Sun",
-    "Cultural",
-    "Adventure",
-    "Desert Safari",
-    "Historical",
-    "Diving",
-    "Relaxation",
-    "Romantic",
-    "Family Friendly",
-    "Luxury"
-  ];
-
-  // Fetch all tours data
   useEffect(() => {
-    const loadAllTours = async () => {
+    const loadAllData = async () => {
       try {
         setLoading(true);
-        const [regular, discounted, leavingSoon] = await Promise.all([
+        const [categoriesData, regular, discounted, leavingSoon, newest] = await Promise.all([
+          fetchCategories(),
           fetchTours(),
           fetchDiscountedTours(),
-          fetchLeavingSoonTours().then(res => res.items)
+          fetchLeavingSoonTours().then(res => res.items),
+          fetchNewestTours().then(res => res.items)
         ]);
 
+        setCategories(categoriesData);
         setRegularTours(regular);
         setDiscountedTours(discounted);
         setLeavingSoonTours(leavingSoon);
+        setNewestTours(newest);
         setError('');
       } catch (err) {
-        console.error('Error loading tours:', err);
-        setError('Failed to load tours. Please try again later.');
+        console.error('Error loading data:', err);
+        setError('Failed to load data. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
-    loadAllTours();
+    loadAllData();
   }, []);
 
-  // Combine all tours and remove duplicates
-  const allTours = React.useMemo(() => {
-    const combined = [...regularTours, ...discountedTours, ...leavingSoonTours];
-    return combined.filter((tour, index, self) =>
-      index === self.findIndex(t => t.id === tour.id)
-    );
-  }, [regularTours, discountedTours, leavingSoonTours]);
+  useEffect(() => {
+    const loadFilteredTours = async () => {
+      try {
+        setLoading(true);
+        let filteredTours: Tour[] = [];
+        
+        if (selectedCategory !== null) {
+          // جلب الرحلات المفلترة حسب الفئة فقط
+          filteredTours = await fetchTours(selectedCategory);
+        } else {
+          // جلب كل الرحلات إذا لم يتم اختيار فئة
+          const [regular, discounted, leavingSoon, newest] = await Promise.all([
+            fetchTours(),
+            fetchDiscountedTours(),
+            fetchLeavingSoonTours().then(res => res.items),
+            fetchNewestTours().then(res => res.items)
+          ]);
+          
+          // دمج جميع الرحلات مع إزالة التكرارات
+          const combined = [...regular, ...discounted, ...leavingSoon, ...newest];
+          filteredTours = combined.filter((tour, index, self) =>
+            index === self.findIndex(t => t.id === tour.id)
+          );
+        }
+        
+        setRegularTours(filteredTours);
+        setError('');
+      } catch (err) {
+        console.error('Error loading filtered tours:', err);
+        setError('Failed to load filtered tours. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Handle page change
+    loadFilteredTours();
+  }, [selectedCategory]);
+
+  const allTours = React.useMemo(() => {
+    return [...regularTours];
+  }, [regularTours]);
+
+  const filteredTours = allTours.filter(tour => {
+    if (searchTerm && !tour.title.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false;
+    }
+
+    const minPrice = priceRange.min ? Number(priceRange.min) : 0;
+    const maxPrice = priceRange.max ? Number(priceRange.max) : Infinity;
+    if (tour.price < minPrice || tour.price > maxPrice) {
+      return false;
+    }
+
+    return true;
+  });
+
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Handle authentication requirement
   const requireAuth = (action: () => void) => {
     if (!authService.isAuthenticated()) {
       if (window.confirm('You need to login first. Do you want to login now?')) {
@@ -93,20 +130,16 @@ const Travels = () => {
     return true;
   };
 
-  // Handle adding to favorites
   const handleFavorite = (tour: Tour) => {
     requireAuth(() => {
-      const isCurrentlyFavorite = isFavorite(tour.id);
-      toggleFavorite({
-        ...tour,
-        image: tour.imageUrls[0] || `${API_BASE_URL}/default-tour.jpg`
-      });
+      toggleFavorite(tour);
       
       const interaction: UserInteraction = {
+        userId,
         id: tour.id.toString(),
         type: 'travel',
         checkout: 0,
-        favourite: !isCurrentlyFavorite,
+        favourite: isFavorite(tour.id),
         booked: false,
         total: 0
       };
@@ -116,9 +149,9 @@ const Travels = () => {
     });
   };
 
-  // Handle viewing tour details
   const handleSeeDetails = (tour: Tour) => {
     const interaction: UserInteraction = {
+      userId,
       id: tour.id.toString(),
       type: 'travel',
       checkout: 0,
@@ -133,10 +166,10 @@ const Travels = () => {
     navigate('/travel-with-us', { state: { tour } });
   };
 
-  // Handle booking
   const handleBookNow = (tour: Tour) => {
     requireAuth(() => {
       const interaction: UserInteraction = {
+        userId,
         id: tour.id.toString(),
         type: 'travel',
         checkout: 1,
@@ -157,31 +190,6 @@ const Travels = () => {
     });
   };
 
-  // Filter tours based on search criteria
-  const filteredTours = allTours.filter(tour => {
-    // Search by title
-    if (searchTerm && !tour.title.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false;
-    }
-
-    // Filter by price range
-    const minPrice = priceRange.min ? Number(priceRange.min) : 0;
-    const maxPrice = priceRange.max ? Number(priceRange.max) : Infinity;
-    if (tour.price < minPrice || tour.price > maxPrice) {
-      return false;
-    }
-
-    // Filter by categories if any selected
-    if (selectedCategories.length > 0) {
-      if (!tour.tags || !tour.tags.some(tag => selectedCategories.includes(tag))) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  // Pagination logic
   const totalItems = filteredTours.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -204,7 +212,6 @@ const Travels = () => {
       }
     }
 
-    // Previous button
     pageButtons.push(
       <button
         key="prev"
@@ -216,7 +223,6 @@ const Travels = () => {
       </button>
     );
 
-    // First page
     if (startPage > 1) {
       pageButtons.push(
         <button
@@ -232,7 +238,6 @@ const Travels = () => {
       }
     }
 
-    // Page numbers
     for (let i = startPage; i <= endPage; i++) {
       pageButtons.push(
         <button
@@ -245,7 +250,6 @@ const Travels = () => {
       );
     }
 
-    // Last page
     if (endPage < totalPages) {
       if (endPage < totalPages - 1) {
         pageButtons.push(<span key="end-ellipsis" className="px-2">...</span>);
@@ -261,7 +265,6 @@ const Travels = () => {
       );
     }
 
-    // Next button
     pageButtons.push(
       <button
         key="next"
@@ -280,7 +283,6 @@ const Travels = () => {
     );
   };
 
-  // Helper functions
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString('en-US', {
@@ -304,7 +306,6 @@ const Travels = () => {
     }
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8 text-center">
@@ -314,7 +315,6 @@ const Travels = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8 text-center">
@@ -329,16 +329,13 @@ const Travels = () => {
     );
   }
 
-  // Main render
   return (
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Filters Section */}
         <div className="lg:w-1/4">
           <div className="bg-white rounded-lg shadow p-6 sticky top-4">
             <h2 className="text-xl font-bold mb-6">Filters</h2>
             
-            {/* Search Filter */}
             <div className="mb-6">
               <label className="block font-medium mb-2">Search</label>
               <div className="relative">
@@ -356,7 +353,6 @@ const Travels = () => {
               </div>
             </div>
 
-            {/* Price Filter */}
             <div className="mb-6">
               <label className="block font-medium mb-2">Price Range (EGP)</label>
               <div className="flex gap-2">
@@ -383,27 +379,37 @@ const Travels = () => {
               </div>
             </div>
 
-            {/* Categories Filter */}
             <div className="mb-6">
               <label className="block font-medium mb-2">Categories</label>
               <div className="space-y-2">
+                <div className="flex items-center">
+                  <input
+                    type="radio"
+                    id="category-all"
+                    name="category"
+                    checked={selectedCategory === null}
+                    onChange={() => {
+                      setSelectedCategory(null);
+                      setCurrentPage(1);
+                    }}
+                    className="mr-2"
+                  />
+                  <label htmlFor="category-all">All Categories</label>
+                </div>
                 {categories.map((category) => (
-                  <div key={category} className="flex items-center">
+                  <div key={category.id} className="flex items-center">
                     <input
-                      type="checkbox"
-                      id={`category-${category}`}
-                      checked={selectedCategories.includes(category)}
+                      type="radio"
+                      id={`category-${category.id}`}
+                      name="category"
+                      checked={selectedCategory === category.id}
                       onChange={() => {
-                        if (selectedCategories.includes(category)) {
-                          setSelectedCategories(selectedCategories.filter(c => c !== category));
-                        } else {
-                          setSelectedCategories([...selectedCategories, category]);
-                        }
+                        setSelectedCategory(category.id);
                         setCurrentPage(1);
                       }}
                       className="mr-2"
                     />
-                    <label htmlFor={`category-${category}`}>{category}</label>
+                    <label htmlFor={`category-${category.id}`}>{category.categoryName}</label>
                   </div>
                 ))}
               </div>
@@ -413,7 +419,7 @@ const Travels = () => {
               onClick={() => {
                 setSearchTerm('');
                 setPriceRange({ min: '', max: '' });
-                setSelectedCategories([]);
+                setSelectedCategory(null);
                 setCurrentPage(1);
               }}
               className="w-full py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
@@ -423,7 +429,6 @@ const Travels = () => {
           </div>
         </div>
 
-        {/* Tours List */}
         <div className="lg:w-3/4">
           {filteredTours.length === 0 ? (
             <div className="text-center py-12">
@@ -442,28 +447,23 @@ const Travels = () => {
                 {currentTours.map((tour) => {
                   const isDiscounted = discountedTours.some(t => t.id === tour.id);
                   const isLeavingSoon = leavingSoonTours.some(t => t.id === tour.id);
+                  const isNew = newestTours.some(t => t.id === tour.id);
 
                   return (
                     <div key={tour.id} className="bg-white rounded-lg shadow overflow-hidden hover:shadow-md transition-shadow">
                       <div className="flex flex-col md:flex-row">
-                        {/* Tour Image */}
                         <div className="md:w-1/3 relative">
                           <img
                             src={
-                              tour.imageUrls && tour.imageUrls.length > 0
-                                ? tour.imageUrls[0].startsWith('http')
-                                  ? tour.imageUrls[0]
-                                  : `${API_BASE_URL}${tour.imageUrls[0]}`
-                                : `${API_BASE_URL}/default-tour.jpg`
+                              tour.coverImageUrl && tour.coverImageUrl.trim() !== ''
+                                ? tour.coverImageUrl
+                                : tour.imageUrls?.[0] || 'https://via.placeholder.com/300x200'
                             }
                             alt={tour.title}
                             className="w-full h-48 object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = `${API_BASE_URL}/default-tour.jpg`;
-                            }}
                           />
-                          {/* Badges */}
-                          {(isDiscounted || isLeavingSoon) && (
+
+                          {(isDiscounted || isLeavingSoon || isNew) && (
                             <div className="absolute top-2 left-2 flex gap-2">
                               {isDiscounted && (
                                 <span className="bg-green-500 text-white text-xs px-2 py-1 rounded">
@@ -475,11 +475,15 @@ const Travels = () => {
                                   Leaving Soon
                                 </span>
                               )}
+                              {isNew && (
+                                <span className="bg-blue-500 text-white text-xs px-2 py-1 rounded">
+                                  New
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
 
-                        {/* Tour Details */}
                         <div className="md:w-2/3 p-6 relative">
                           <button
                             onClick={(e) => {
@@ -571,7 +575,6 @@ const Travels = () => {
                 })}
               </div>
 
-              {/* Pagination */}
               {renderPagination()}
             </>
           )}

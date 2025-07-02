@@ -64,13 +64,24 @@
 // import photo10 from "./assets/images/tirhaltravel3.jpg";
 // import photo11 from "./assets/images/tirhaltravel4.jpg";
 // import photo12 from "./assets/images/tirhaltravel5.jpg";
+export interface Itinerary {
+  title: string;
+  dayNumber: number;
+  description: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  activities: string[];
+  includesBreakfast: boolean;
+  includesLunch: boolean;
+  includesDinner: boolean;
+  notes: string;
+}
 
-
-// src/types.ts
 export interface Tour {
   id: number;
   title: string;
-  description?: string;
+  description: string;
   price: number;
   startDate: string;
   endDate: string;
@@ -83,20 +94,21 @@ export interface Tour {
   destinationCityLat?: number;
   destinationCityLng?: number;
   transportationType: string;
+  coverImageUrl: string;
   amenities: string[];
   companyId?: number;
   companyName?: string;
-  profileImageUrl?: string; 
+  profileImageUrl?: string;
+  companyProfileImageUrl?: string;
   imageUrls: string[];
-   image?: string; 
-  tags?: string[]; 
-  itineraries?: {
-    dayNumber: number;
-    activities: string[];
-  }[];
+  image?: string;
+  tags?: string[];
   rating?: number;
-  
+  itineraries?: Itinerary[];
+  categoryId?: number;
 }
+
+
 
 
 export interface Review {

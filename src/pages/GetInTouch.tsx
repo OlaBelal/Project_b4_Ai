@@ -1,30 +1,27 @@
-import  { useState, ChangeEvent, FormEvent } from 'react';
-
-// Import images from the assets/images directory
+import { useState, ChangeEvent, FormEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import getInTouchImage from '../assets/images/getintouch1.png';
 import termsImage from '../assets/images/273 1.png';
+import { submitTourismCompanyRequest } from '../services/travelService';
 
 const GetInTouch = () => {
+  const { t, i18n } = useTranslation();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    companyName: '',
-    owner: '',
-    name: '',
-    commonRegistrationNumber: '',
-    phoneNumber: '',
-    whatsapp: '',
-    email: '',
-    companyAddress: '',
-    companyDiscription:'',
-    contactPersonName: '',
-    contactEmail: '',
-    contactPersonNumber: '',
-    typeOfType: '',
-    keyDestinations: '', 
-    specialActivities: '',
-    additionalDocument: '',
-    websiteURL: '', 
-    LogoURl:'',
-    coverImageURL:'',
+    CompanyName: '',
+    Owner: '',
+    Email: '',
+    CommercialRegistrationNumber: '',
+    PhoneNumber: '',
+    WebsiteUrl: '',
+    CompanyAddress: '',
+    Description: '',
+    ContactPersonName: '',
+    ContactPersonNumber: '',
+    TypeofTrips: '',
+    LicenseImageUrl: '',
+    LogoUrl: '',
+    CoverImageUrl: '',
     acceptTerms: false,
   });
 
@@ -33,9 +30,8 @@ const GetInTouch = () => {
   ) => {
     const { name, value, type } = e.target;
 
-    // Handle checkboxes separately
     if (type === 'checkbox') {
-      const { checked } = e.target as HTMLInputElement; // Narrow down the type
+      const { checked } = e.target as HTMLInputElement;
       setFormData({
         ...formData,
         [name]: checked,
@@ -47,78 +43,135 @@ const GetInTouch = () => {
       });
     }
   };
+const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  setIsSubmitting(true);
+  
+  if (!formData.acceptTerms) {
+    alert(t('getInTouch.termsError'));
+    setIsSubmitting(false);
+    return;
+  }
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    console.log(formData);
-    // Add form submission logic here
-  };
+  try {
+    const requestData = {
+      CompanyName: formData.CompanyName,
+      Owner: formData.Owner,
+      Email: formData.Email,
+      CommercialRegistrationNumber: formData.CommercialRegistrationNumber,
+      PhoneNumber: formData.PhoneNumber,
+      WebsiteUrl: formData.WebsiteUrl || undefined,
+      CompanyAddress: formData.CompanyAddress,
+      Description: formData.Description,
+      ContactPersonName: formData.ContactPersonName,
+      ContactPersonNumber: formData.ContactPersonNumber,
+      TypeofTrips: formData.TypeofTrips,
+      LicenseImageUrl: formData.LicenseImageUrl,
+      LogoUrl: formData.LogoUrl,
+      CoverImageUrl: formData.CoverImageUrl
+    };
 
+    await submitTourismCompanyRequest(requestData);
+
+    alert(t('getInTouch.submissionSuccess'));
+    
+    setFormData({
+      CompanyName: '',
+      Owner: '',
+      Email: '',
+      CommercialRegistrationNumber: '',
+      PhoneNumber: '',
+      WebsiteUrl: '',
+      CompanyAddress: '',
+      Description: '',
+      ContactPersonName: '',
+      ContactPersonNumber: '',
+      TypeofTrips: '',
+      LicenseImageUrl: '',
+      LogoUrl: '',
+      CoverImageUrl: '',
+      acceptTerms: false,
+    });
+  } catch (error: unknown) {
+    console.error('Error submitting form:', error);
+    if (error instanceof Error) {
+      alert(error.message || t('getInTouch.submissionError'));
+    } else {
+      alert(t('getInTouch.submissionError'));
+    }
+  } finally {
+    setIsSubmitting(false);
+  }
+};
   return (
-    <div className="font-sans">
+    <div className={`font-sans ${i18n.language === 'ar' ? 'text-right' : 'text-left'}`}>
       {/* Cover Image */}
       <div className="relative w-full mb-5">
         <img
           src={getInTouchImage}
-          alt="Contact Us"
+          alt={t('getInTouch.contactImageAlt')}
           className="w-full h-auto"
         />
         {/* Text Over the Image */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center text-white font-yesteryear text-4xl md:text-7xl shadow-lg">
-          Get In Touch
+          {t('getInTouch.title')}
         </div>
       </div>
 
       {/* Form Container */}
       <div className="max-w-6xl mx-auto p-5 shadow-lg">
         <form onSubmit={handleSubmit} className="max-w-6xl mx-auto">
-          {/* Two inputs per row */}
+          {/* Company Name and Owner */}
           <div className="flex flex-col md:flex-row gap-5 mb-5 mt-5">
             <div className="flex-1">
-              <label>Company Name <span className="text-red-500">*</span></label>
+              <label>{t('getInTouch.companyName')} <span className="text-red-500">*</span></label>
               <input
                 type="text"
-                name="companyName"
-                value={formData.companyName}
+                name="CompanyName"
+                value={formData.CompanyName}
                 onChange={handleChange}
-                placeholder="e.g., ABC Corporation"
+                required
+                placeholder={t('getInTouch.companyNamePlaceholder')}
                 className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
               />
             </div>
             <div className="flex-1">
-              <label>Owner <span className="text-red-500">*</span></label>
+              <label>{t('getInTouch.owner')} <span className="text-red-500">*</span></label>
               <input
                 type="text"
-                name="owner"
-                value={formData.owner}
+                name="Owner"
+                value={formData.Owner}
                 onChange={handleChange}
-                placeholder="e.g., John Doe"
+                required
+                placeholder={t('getInTouch.ownerPlaceholder')}
                 className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
               />
             </div>
           </div>
 
-          {/* More form fields */}
+          {/* Email and Commercial Registration Number */}
           <div className="flex flex-col md:flex-row gap-5 mb-5">
             <div className="flex-1">
-              <label>Company Email <span className="text-red-500">*</span></label>
+              <label>{t('getInTouch.companyEmail')} <span className="text-red-500">*</span></label>
               <input
                 type="email"
-                name="email"
-                value={formData.email}
+                name="Email"
+                value={formData.Email}
                 onChange={handleChange}
-                placeholder="e.g., info@abccorp.com"
+                required
+                placeholder={t('getInTouch.companyEmailPlaceholder')}
                 className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
               />
             </div>
             <div className="flex-1">
-              <label>Commercial Registration Number <span className="text-red-500">*</span></label>
+              <label>{t('getInTouch.registrationNumber')} <span className="text-red-500">*</span></label>
               <input
                 type="text"
-                name="commonRegistrationNumber"
-                value={formData.commonRegistrationNumber}
+                name="CommercialRegistrationNumber"
+                value={formData.CommercialRegistrationNumber}
                 onChange={handleChange}
-                placeholder="e.g., 123456789"
+                required
+                placeholder={t('getInTouch.registrationNumberPlaceholder')}
                 className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
               />
             </div>
@@ -127,164 +180,137 @@ const GetInTouch = () => {
           {/* Phone Number and Website URL */}
           <div className="flex flex-col md:flex-row gap-5 mb-5">
             <div className="flex-1">
-              <label>Phone Number <span className="text-red-500">*</span></label>
+              <label>{t('getInTouch.phoneNumber')} <span className="text-red-500">*</span></label>
               <input
                 type="text"
-                name="phoneNumber"
-                value={formData.phoneNumber}
+                name="PhoneNumber"
+                value={formData.PhoneNumber}
                 onChange={handleChange}
-                placeholder="e.g., +1234567890"
+                required
+                placeholder={t('getInTouch.phoneNumberPlaceholder')}
                 className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
               />
             </div>
             <div className="flex-1">
-              <label>Website URL</label>
+              <label>{t('getInTouch.websiteURL')}</label>
               <input
                 type="text"
-                name="websiteURL"
-                value={formData.websiteURL}
+                name="WebsiteUrl"
+                value={formData.WebsiteUrl}
                 onChange={handleChange}
-                placeholder="e.g., www.abccorp.com"
+                placeholder={t('getInTouch.websiteURLPlaceholder')}
                 className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
               />
             </div>
-            
           </div>
+
+          {/* Logo and Cover Image URLs */}
           <div className="flex flex-col md:flex-row gap-5 mb-5">
             <div className="flex-1">
-              <label>Logo URl <span className="text-red-500">*</span></label>
+              <label>{t('getInTouch.logoURL')} <span className="text-red-500">*</span></label>
               <input
                 type="text"
-                name="LogoURl"
-                value={formData.LogoURl}
+                name="LogoUrl"
+                value={formData.LogoUrl}
                 onChange={handleChange}
-                placeholder="e.g., +1234567890"
+                required
+                placeholder={t('getInTouch.logoURLPlaceholder')}
                 className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
               />
             </div>
             <div className="flex-1">
-              <label>Cover Image URL<span className="text-red-500">*</span></label>
+              <label>{t('getInTouch.coverImageURL')} <span className="text-red-500">*</span></label>
               <input
                 type="text"
-                name="coverImageURL"
-                value={formData.coverImageURL}
+                name="CoverImageUrl"
+                value={formData.CoverImageUrl}
                 onChange={handleChange}
-                placeholder="e.g., www.abccorp.com"
+                required
+                placeholder={t('getInTouch.coverImageURLPlaceholder')}
                 className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
               />
             </div>
-            
           </div>
 
           {/* Company Address */}
           <div className="mb-5">
-            <label>Company Address</label>
+            <label>{t('getInTouch.companyAddress')} <span className="text-red-500">*</span></label>
             <input
               type="text"
-              name="companyAddress"
-              value={formData.companyAddress}
+              name="CompanyAddress"
+              value={formData.CompanyAddress}
               onChange={handleChange}
-              placeholder="e.g., 123 Main St, City, Country"
+              required
+              placeholder={t('getInTouch.companyAddressPlaceholder')}
               className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
             />
-            <div className="flex-1 mb-5 mt-5">
-              <label>Discription  <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                name="Discription"
-                value={formData.companyDiscription}
-                onChange={handleChange}
-                placeholder="e.g., Explor the worled"
-                className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
-              />
-            </div>
+          </div>
+
+          {/* Description */}
+          <div className="mb-5">
+            <label>{t('getInTouch.description')} <span className="text-red-500">*</span></label>
+            <textarea
+              name="Description"
+              value={formData.Description}
+              onChange={handleChange}
+              required
+              placeholder={t('getInTouch.descriptionPlaceholder')}
+              className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951] min-h-[100px]"
+            />
           </div>
 
           {/* Contact Person Details */}
           <div className="flex flex-col md:flex-row gap-5 mb-5">
             <div className="flex-1">
-              <label>Contact Person Name <span className="text-red-500">*</span></label>
+              <label>{t('getInTouch.contactPersonName')} <span className="text-red-500">*</span></label>
               <input
                 type="text"
-                name="contactPersonName"
-                value={formData.contactPersonName}
+                name="ContactPersonName"
+                value={formData.ContactPersonName}
                 onChange={handleChange}
-                placeholder="e.g., Jane Smith"
+                required
+                placeholder={t('getInTouch.contactPersonNamePlaceholder')}
                 className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
               />
             </div>
             <div className="flex-1">
-              <label>Contact Email <span className="text-red-500">*</span></label>
+              <label>{t('getInTouch.contactPersonNumber')} <span className="text-red-500">*</span></label>
               <input
-                type="email"
-                name="contactEmail"
-                value={formData.contactEmail}
+                type="text"
+                name="ContactPersonNumber"
+                value={formData.ContactPersonNumber}
                 onChange={handleChange}
-                placeholder="e.g., jane.smith@abccorp.com"
+                required
+                placeholder={t('getInTouch.contactPersonNumberPlaceholder')}
                 className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
               />
             </div>
           </div>
 
-          {/* Contact Person Number */}
+          {/* Type of Trips */}
           <div className="mb-5">
-            <label>Contact Person Number <span className="text-red-500">*</span></label>
+            <label>{t('getInTouch.typeOfTrips')} <span className="text-red-500">*</span></label>
             <input
               type="text"
-              name="contactPersonNumber"
-              value={formData.contactPersonNumber}
+              name="TypeofTrips"
+              value={formData.TypeofTrips}
               onChange={handleChange}
-              placeholder="e.g., +1234567890"
+              required
+              placeholder={t('getInTouch.typeOfTripsPlaceholder')}
               className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
             />
           </div>
 
-          {/* Type of Trips and Key Destinations */}
-          <div className="flex flex-col md:flex-row gap-5 mb-5">
-            <div className="flex-1">
-              <label>Type of Trips <span className="text-red-500">*</span></label>
-              <input
-                type="text"
-                name="typeOfType"
-                value={formData.typeOfType}
-                onChange={handleChange}
-                placeholder="e.g., Business, Leisure"
-                className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
-              />
-            </div>
-            <div className="flex-1">
-              <label>Key Destinations</label>
-              <input
-                type="text"
-                name="keyDestinations"
-                value={formData.keyDestinations}
-                onChange={handleChange}
-                placeholder="e.g., New York, Paris"
-                className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
-              />
-            </div>
-          </div>
-
-          {/* Special Activities */}
+          {/* License Image URL */}
           <div className="mb-5">
-            <label>Special Activities</label>
+            <label>{t('getInTouch.licenseImage')} <span className="text-red-500">*</span></label>
             <input
               type="text"
-              name="specialActivities"
-              value={formData.specialActivities}
+              name="LicenseImageUrl"
+              value={formData.LicenseImageUrl}
               onChange={handleChange}
-              placeholder="e.g., Team Building, Adventure Sports"
-              className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
-            />
-          </div>
-
-          {/* Additional Document */}
-          <div className="mb-5">
-            <label>Additional Document Layout</label>
-            <input
-              type="file"
-              name="additionalDocument"
-              onChange={handleChange}
+              required
+              placeholder="https://example.com/license.jpg"
               className="w-full p-2 mt-1 bg-gray-100 border border-gray-300 rounded-md focus:outline-none focus:border-[#DF6951]"
             />
           </div>
@@ -292,11 +318,11 @@ const GetInTouch = () => {
           {/* Terms and Conditions */}
           <div className="flex flex-col md:flex-row gap-5 mb-5 mt-10">
             <div className="flex-1 bg-gray-100 p-5 rounded-md">
-              <p className="font-bold mb-3">By Submitting the Form, You Agree To:</p>
+              <p className="font-bold mb-3">{t('getInTouch.termsTitle')}</p>
               <ul className="list-disc pl-5">
-                <li>Provide Company Official Registration and Valid Travel Operation License.</li>
-                <li>Ensure Website or Social Platform is Active for Collaborative Display Purposes.</li>
-                <li>Confirm Agreement to Share and Feature Content on Our Tourism Platform.</li>
+                <li>{t('getInTouch.termsPoint1')}</li>
+                <li>{t('getInTouch.termsPoint2')}</li>
+                <li>{t('getInTouch.termsPoint3')}</li>
               </ul>
               <div className="mt-3 text-[#2642a8]">
                 <label className="flex items-center">
@@ -306,15 +332,16 @@ const GetInTouch = () => {
                     checked={formData.acceptTerms}
                     onChange={handleChange}
                     className="mr-2"
+                    required
                   />
-                  Accepts the File Available Now From Post Your Account for Policy violations.
+                  {t('getInTouch.acceptTerms')}
                 </label>
               </div>
             </div>
             <div className="flex-1 flex justify-end">
               <img
                 src={termsImage}
-                alt="Terms and Conditions"
+                alt={t('getInTouch.termsImageAlt')}
                 className="w-full md:w-2/3 h-auto rounded-md"
               />
             </div>
@@ -324,9 +351,12 @@ const GetInTouch = () => {
           <div className="flex justify-center">
             <button
               type="submit"
-              className="px-8 py-3 bg-[#DF6951] text-white rounded-md hover:bg-[#C6533D] transition-colors w-full md:w-1/5"
+              disabled={isSubmitting}
+              className={`px-8 py-3 bg-[#DF6951] text-white rounded-md hover:bg-[#C6533D] transition-colors w-full md:w-1/5 ${
+                isSubmitting ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              Register
+              {isSubmitting ? t('getInTouch.submitting') : t('getInTouch.registerButton')}
             </button>
           </div>
         </form>

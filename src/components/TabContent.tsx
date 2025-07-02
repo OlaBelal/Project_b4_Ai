@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Tour} from '../types';
+import { Tour } from '../types';
 import TabInformation from './TabInformation';
 import TabTourPlan from './TabTourPlan';
 import TabLocation from './TabLocation';
 import TabGallery from './TabGallery';
-
 import BookingForm from './BookingForm';
 
 interface TabContentProps {
@@ -14,8 +13,6 @@ interface TabContentProps {
 }
 
 const TabContent: React.FC<TabContentProps> = ({ activeTab, tour }) => {
-
-
   const navigate = useNavigate();
 
   const handleCompanyNameClick = () => {
@@ -27,6 +24,8 @@ const TabContent: React.FC<TabContentProps> = ({ activeTab, tour }) => {
     });
   };
 
+  console.log('Current tour data in TabContent:', tour);
+
   return (
     <div className="mt-8 pb-8 relative">
       <div className="flex gap-8 max-w-6xl mx-auto">
@@ -36,17 +35,23 @@ const TabContent: React.FC<TabContentProps> = ({ activeTab, tour }) => {
             <TabInformation tour={tour} />
           )}
 
-          {activeTab === 'Tour Plan' && <TabTourPlan />}
+          {activeTab === 'Tour Plan' && <TabTourPlan itineraries={tour.itineraries || []} />}
 
-          {activeTab === 'Location' && <TabLocation tour={tour} />}
 
-          {activeTab === 'Gallery' && <TabGallery tour={tour} />}
 
-          
+          {activeTab === 'Location' && (
+            <TabLocation tour={tour} />
+          )}
+
+          {activeTab === 'Gallery' && (
+            <TabGallery tour={tour} />
+          )}
         </div>
 
         {/* Booking Form (Sticky to the Right) */}
-        <BookingForm tour={tour} />
+        <div className="w-80 sticky top-4 h-fit">
+          <BookingForm tour={tour} />
+        </div>
       </div>
     </div>
   );

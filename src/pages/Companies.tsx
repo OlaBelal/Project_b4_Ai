@@ -2,28 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Star, ChevronLeft, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getCompanies, Company } from '../services/api';
-import { fetchDiscountedTours} from '../services/travelService';
+import { fetchDiscountedTours } from '../services/travelService';
 import { Tour } from '../types';
-// Company type options
-const companyTypes = ["All", "Luxury", "Adventure", "Cultural", "Family", "Budget"];
 
-// Destination options
-const destinations = ["All", "Europe", "Asia", "Africa", "South America", "Caribbean", "Pacific", "Middle East"];
+const addresses = ["All", "Cairo", "Giza", "Hurghada", "Sharm El Sheikh","Aswan", "Luxor", "Tanta"];
 
-// Specialty options
-const specialties = [
-  "Luxury Tours",
-  "Honeymoon Packages",
-  "Private Jets",
-  "Hiking",
-  "Safari",
-  "Water Sports",
-  "Heritage Tours",
-  "Food Tours",
-  "Art Expeditions"
-];
-
-// Interface for user interaction tracking
 interface UserInteraction {
   id: string;
   type: string;
@@ -34,22 +17,14 @@ interface UserInteraction {
 }
 
 const Companies = () => {
-  // State for discounts carousel
   const [currentDiscountIndex, setCurrentDiscountIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const [discountedTours, setDiscountedTours] = useState<Tour[]>([]);
   const [loadingDiscounts, setLoadingDiscounts] = useState(true);
-
-  // State for search and filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('All');
-  const [selectedDestination, setSelectedDestination] = useState('All');
-  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-
-  // State for companies data
+  const [selectedAddress, setSelectedAddress] = useState('All');
   const [companies, setCompanies] = useState<Company[]>([]);
   const [totalCompanies, setTotalCompanies] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -59,30 +34,22 @@ const Companies = () => {
 
   const navigate = useNavigate();
 
-  // Calculate original price for discount display
   const calculateOriginalPrice = (price: number) => {
-    return Math.round(price / 0.7); // Assuming 30% discount if original price not provided
+    return Math.round(price / 0.7);
   };
 
-  // Check if tour is favorite
   const isFavorite = (id: number): boolean => {
-    // Implement your favorite check logic
     return false;
   };
 
-  // Calculate interaction total
   const calculateTotal = (interaction: UserInteraction): number => {
-    // Implement your calculation logic
     return 0;
   };
 
-  // Save user interaction
   const saveInteraction = (interaction: UserInteraction): void => {
-    // Implement your save logic
     console.log('Interaction saved:', interaction);
   };
 
-  // Handle book now action
   const handleBookNow = (tour: Tour) => {
     navigate(`/booking/${tour.id}`, {
       state: {
@@ -92,7 +59,6 @@ const Companies = () => {
     });
   };
 
-  // Handle view details action
   const handleSeeDetails = (tour: Tour) => {
     const interaction: UserInteraction = {
       id: tour.id.toString(),
@@ -109,19 +75,16 @@ const Companies = () => {
     navigate('/travel-with-us', { state: { tour } });
   };
 
-  // Handle company click
   const handleCompanyClick = (companyId?: number) => {
     if (companyId) {
       navigate(`/companies/${companyId}`);
     }
   };
 
-  // Handle view company
   const handleViewCompany = (companyId: number) => {
     navigate(`/companies/${companyId}`);
   };
 
-  // Fetch companies data
   useEffect(() => {
     const fetchCompanies = async () => {
       try {
@@ -140,7 +103,6 @@ const Companies = () => {
     fetchCompanies();
   }, [currentPage]);
 
-  // Fetch discounted tours
   useEffect(() => {
     const fetchDiscounts = async () => {
       try {
@@ -157,7 +119,6 @@ const Companies = () => {
     fetchDiscounts();
   }, []);
 
-  // Auto-rotate discounts
   useEffect(() => {
     if (discountedTours.length > 0) {
       const interval = setInterval(() => {
@@ -167,7 +128,6 @@ const Companies = () => {
     }
   }, [currentDiscountIndex, discountedTours]);
 
-  // Handle next discount
   const handleNextDiscount = () => {
     if (isAnimating || discountedTours.length === 0) return;
     setIsAnimating(true);
@@ -175,7 +135,6 @@ const Companies = () => {
     setTimeout(() => setIsAnimating(false), 300);
   };
 
-  // Handle previous discount
   const handlePrevDiscount = () => {
     if (isAnimating || discountedTours.length === 0) return;
     setIsAnimating(true);
@@ -183,74 +142,41 @@ const Companies = () => {
     setTimeout(() => setIsAnimating(false), 300);
   };
 
-  // Filter companies based on search and filters
   const filteredCompanies = companies.filter(company => {
-    // Search term filter
     if (searchTerm && !company.companyName.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
     
-    // Company type filter
-    if (selectedType !== 'All' && company.type !== selectedType) {
+    if (selectedRating && company.rating > selectedRating) {
       return false;
     }
     
-    // Destination filter
-    if (selectedDestination !== 'All' && !company.destinations?.includes(selectedDestination)) {
-      return false;
-    }
-    
-    // Specialties filter
-    if (selectedSpecialties.length > 0 && !selectedSpecialties.some(specialty => 
-      company.specialties?.includes(specialty)
-    )) {
-      return false;
-    }
-    
-    // Rating filter
-    if (selectedRating && company.rating < selectedRating) {
-      return false;
-    }
-    
-    // Verified only filter
     if (verifiedOnly && !company.verified) {
+      return false;
+    }
+    
+    if (selectedAddress !== 'All' && !company.address?.toLowerCase().includes(selectedAddress.toLowerCase())) {
       return false;
     }
     
     return true;
   });
 
-  // Calculate total pages for pagination
   const totalPages = Math.ceil(totalCompanies / companiesPerPage);
 
-  // Toggle specialty filter
-  const toggleSpecialty = (specialty: string) => {
-    setSelectedSpecialties(previousSpecialties =>
-      previousSpecialties.includes(specialty)
-        ? previousSpecialties.filter(s => s !== specialty)
-        : [...previousSpecialties, specialty]
-    );
-    setCurrentPage(1);
-  };
-
-  // Reset all filters
   const resetFilters = () => {
-    setSelectedType('All');
-    setSelectedDestination('All');
-    setSelectedSpecialties([]);
     setSelectedRating(null);
     setVerifiedOnly(false);
     setSearchTerm('');
+    setSelectedAddress('All');
     setCurrentPage(1);
   };
 
-  // Handle page change
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Render pagination buttons
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
@@ -259,7 +185,6 @@ const Companies = () => {
     let startPage = Math.max(1, currentPage - 2);
     let endPage = Math.min(totalPages, currentPage + 2);
 
-    // Adjust start and end pages if there are many pages
     if (totalPages > maxVisiblePages) {
       if (currentPage <= 3) {
         endPage = maxVisiblePages;
@@ -268,7 +193,6 @@ const Companies = () => {
       }
     }
 
-    // Add first page and ellipsis if needed
     if (startPage > 1) {
       pageButtons.push(
         <button
@@ -284,7 +208,6 @@ const Companies = () => {
       }
     }
 
-    // Add visible page buttons
     for (let i = startPage; i <= endPage; i++) {
       pageButtons.push(
         <button
@@ -297,7 +220,6 @@ const Companies = () => {
       );
     }
 
-    // Add last page and ellipsis if needed
     if (endPage < totalPages) {
       if (endPage < totalPages - 1) {
         pageButtons.push(<span key="end-ellipsis" className="px-2">...</span>);
@@ -334,7 +256,6 @@ const Companies = () => {
     );
   };
 
-  // Loading state
   if (loading && currentPage === 1) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -345,7 +266,6 @@ const Companies = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -357,7 +277,6 @@ const Companies = () => {
     );
   }
 
-  // Main render
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Discounts Section */}
@@ -481,72 +400,55 @@ const Companies = () => {
       </div>
 
       {/* Companies Section */}
-      <div>
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4 md:mb-0">Our Partner Companies</h2>
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => {
-                  setSearchTerm(event.target.value);
-                  setCurrentPage(1);
-                }}
-                placeholder="Search companies..."
-                className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Filters Sidebar */}
+        <div className="lg:w-1/4">
+          <div className="bg-white rounded-lg shadow-lg p-6 sticky top-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg">Filters</h3>
+              <button
+                onClick={resetFilters}
+                className="text-sm text-orange-500 hover:text-orange-700  font-bold"
+              >
+                Reset All
+              </button>
             </div>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <SlidersHorizontal size={20} />
-              <span>Filters</span>
-            </button>
-          </div>
-        </div>
 
-        {showFilters && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div>
-                <h3 className="font-semibold mb-2">Company Type</h3>
-                <select
-                  value={selectedType}
+            <div className="space-y-6">
+              <div className="relative w-full md:w-64">
+                <input
+                  type="text"
+                  value={searchTerm}
                   onChange={(event) => {
-                    setSelectedType(event.target.value);
+                    setSearchTerm(event.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Search companies..."
+                  className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 w-full"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              </div>
+              
+              <div>
+                <h3 className="font-semibold mb-2">Address</h3>
+                <select
+                  value={selectedAddress}
+                  onChange={(event) => {
+                    setSelectedAddress(event.target.value);
                     setCurrentPage(1);
                   }}
                   className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 >
-                  {companyTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
+                  {addresses.map(address => (
+                    <option key={address} value={address}>{address}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <h3 className="font-semibold mb-2">Destination</h3>
-                <select
-                  value={selectedDestination}
-                  onChange={(event) => {
-                    setSelectedDestination(event.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                >
-                  {destinations.map(destination => (
-                    <option key={destination} value={destination}>{destination}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <h3 className="font-semibold mb-2">Minimum Rating</h3>
+                <h3 className="font-semibold mb-2">Maximum Rating</h3>
                 <div className="space-y-2">
-                  {[5, 4, 3, 2, 1].map((rating) => (
+                  {[1, 2, 3, 4, 5].map((rating) => (
                     <div
                       key={rating}
                       onClick={() => {
@@ -565,27 +467,10 @@ const Companies = () => {
                           />
                         ))}
                       </div>
-                      <span className={`ml-2 ${rating === selectedRating ? "font-semibold" : ""}`}>& Up</span>
+                      <span className={`ml-2 ${rating === selectedRating ? "font-semibold" : ""}`}>
+                        {rating === 1 ? '1 star max' : `${rating} stars max`}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="lg:col-span-2">
-                <h3 className="font-semibold mb-2">Specialties</h3>
-                <div className="flex flex-wrap gap-2">
-                  {specialties.map(specialty => (
-                    <button
-                      key={specialty}
-                      onClick={() => toggleSpecialty(specialty)}
-                      className={`px-3 py-1 rounded-full text-sm ${
-                        selectedSpecialties.includes(specialty)
-                          ? 'bg-orange-500 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {specialty}
-                    </button>
                   ))}
                 </div>
               </div>
@@ -605,91 +490,88 @@ const Companies = () => {
                 </label>
               </div>
             </div>
-
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={resetFilters}
-                className="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                Reset Filters
-              </button>
-            </div>
           </div>
-        )}
-
-        <div className="space-y-6">
-          {companies.length === 0 ? (
-            <div className="text-center py-12">
-              <h3 className="text-xl font-semibold text-gray-700">No companies found</h3>
-              <p className="text-gray-500 mt-2">Try adjusting your filters or search criteria</p>
-            </div>
-          ) : (
-            companies.map((company) => (
-              <div key={company.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col md:flex-row hover:shadow-lg transition-shadow">
-                <div className="md:w-1/3 h-48 md:h-auto">
-                  <img
-                    src={company.profileImageUrl || "https://via.placeholder.com/300x200"}
-                    alt={company.companyName}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-
-                <div className="p-6 md:w-2/3 flex flex-col">
-                  <div className="flex items-center mb-4">
-                    <img
-                      src={company.profileImageUrl || "https://via.placeholder.com/50"}
-                      alt={company.companyName}
-                      className="w-12 h-12 rounded-full object-cover mr-4 border-2 border-white shadow-sm"
-                    />
-                    <div>
-                      <h3 
-                        className="text-xl font-bold hover:text-blue-600 hover:underline cursor-pointer"
-                        onClick={() => handleViewCompany(company.id)}
-                      >
-                        {company.companyName}
-                      </h3>
-                      <div className="flex items-center">
-                        {Array.from({ length: 5 }).map((_, index) => (
-                          <Star
-                            key={index}
-                            size={16}
-                            className={index < Math.floor(company.rating) ? "text-yellow-400 fill-current" : "text-gray-300"}
-                          />
-                        ))}
-                        <span className="ml-2 text-sm text-gray-600">({company.ratings?.length || 0})</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="text-gray-600 mb-4 line-clamp-2">{company.description}</p>
-
-                  <div className="grid grid-cols-2 gap-2 mb-4">
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-500">Destinations</h4>
-                      <p className="text-sm">{company.destinations?.slice(0, 3).join(", ") || "Various destinations"}</p>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-semibold text-gray-500">Specialties</h4>
-                      <p className="text-sm">{company.specialties?.slice(0, 2).join(", ") || "Various specialties"}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex space-x-4 mt-auto">
-                    <button 
-                      onClick={() => handleViewCompany(company.id)}
-                      className="flex-1 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
-                    >
-                      View Company
-                    </button>
-                    
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
         </div>
 
-        {renderPagination()}
+        {/* Companies List */}
+        <div className="lg:w-3/4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <h2 className="text-2xl font-bold text-gray-900">Our Partner Companies</h2>
+          </div>
+
+          <div className="space-y-6">
+            {filteredCompanies.length === 0 ? (
+              <div className="text-center py-12">
+                <h3 className="text-xl font-semibold text-gray-700">No companies found</h3>
+                <p className="text-gray-500 mt-2">Try adjusting your filters or search criteria</p>
+              </div>
+            ) : (
+              filteredCompanies.map((company) => (
+                <div key={company.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col md:flex-row hover:shadow-lg transition-shadow">
+                  <div className="md:w-1/3 h-48 md:h-auto">
+                    <img
+                      src={company.profileImageUrl || "https://via.placeholder.com/300x200"}
+                      alt={company.companyName}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+
+                  <div className="p-6 md:w-2/3 flex flex-col">
+                    <div className="flex items-center mb-4">
+                      <img
+                        src={company.profileImageUrl || "https://via.placeholder.com/50"}
+                        alt={company.companyName}
+                        className="w-12 h-12 rounded-full object-cover mr-4 border-2 border-white shadow-sm"
+                      />
+                      <div>
+                        <h3 
+                          className="text-xl font-bold hover:text-blue-600 hover:underline cursor-pointer"
+                          onClick={() => handleViewCompany(company.id)}
+                        >
+                          {company.companyName}
+                        </h3>
+                        <div className="flex items-center">
+                          {Array.from({ length: 5 }).map((_, index) => (
+                            <Star
+                              key={index}
+                              size={16}
+                              className={index < Math.floor(company.rating) ? "text-yellow-400 fill-current" : "text-gray-300"}
+                            />
+                          ))}
+                          <span className="ml-2 text-sm text-gray-600">({company.ratings?.length || 0})</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <p className="text-gray-600 mb-4 line-clamp-2">{company.description}</p>
+
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-500">Address</h4>
+                        <p className="text-sm">{company.address || "Address not specified"}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-500">Destinations</h4>
+                        <p className="text-sm">{company.destinations?.slice(0, 2).join(", ") || "Various destinations"}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex space-x-4 mt-auto">
+                      <button 
+                        onClick={() => handleViewCompany(company.id)}
+                        className="flex-1 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+                      >
+                        View Company
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {renderPagination()}
+        </div>
       </div>
     </div>
   );

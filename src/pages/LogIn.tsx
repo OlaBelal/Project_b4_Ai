@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
+import { useTranslation } from 'react-i18next';
 import travelImage2 from "../assets/images/loginbag.jpg";
-import { authService } from "../services/authService"; 
+import { authService } from "../services/authService";
 
 interface Errors {
   email?: string;
@@ -16,6 +17,7 @@ interface GoogleCredentialResponse {
 }
 
 const LogIn = () => {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [formData, setFormData] = useState({
@@ -28,23 +30,21 @@ const LogIn = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignUpRedirect = () => {
-  
-  navigate("/signup", { state: { fromBeforeSignUp: location.pathname } });
-};
-
+    navigate("/signup", { state: { fromBeforeSignUp: location.pathname } });
+  };
 
   const handleForgotPassword = async () => {
     if (!formData.email) {
-      setErrors({ ...errors, email: "Email is required to reset password" });
+      setErrors({ ...errors, email: t('login.errors.emailRequiredForReset') });
       return;
     }
 
     try {
       setIsLoading(true);
       await authService.forgotPassword(formData.email);
-      alert(`Password reset instructions sent to ${formData.email}`);
+      alert(t('login.resetPasswordSent', { email: formData.email }));
     } catch (error: any) {
-      setApiError(error.message || "Failed to send reset instructions");
+      setApiError(error.message || t('login.errors.resetFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -68,79 +68,89 @@ const LogIn = () => {
     const newErrors: Errors = {};
 
     if (!formData.email.trim()) {
-      newErrors.email = "Email is required";
+      newErrors.email = t('login.errors.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email address";
+      newErrors.email = t('login.errors.invalidEmail');
     }
 
     if (!formData.password) {
-      newErrors.password = "Password is required";
+      newErrors.password = t('login.errors.passwordRequired');
     } else if (!authService.validatePassword(formData.password)) {
-      newErrors.password =
-        "Password must be at least 8 characters long and include letters, numbers, and special characters.";
+      newErrors.password = t('login.errors.passwordRequirements');
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
- const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setApiError(null);
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setApiError(null);
 
-  if (validateForm()) {
+    if (validateForm()) {
+      try {
+        setIsLoading(true);
+        const user = await authService.login(formData.email, formData.password);
+
+        // Store complete user data in localStorage
+        const completeUser = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone || '',
+          token: user.token
+        };
+        localStorage.setItem('currentUser', JSON.stringify(completeUser));
+
+        const from = location.state?.from?.pathname || "/account";
+        navigate(from, { replace: true });
+      } catch (error: any) {
+        setApiError(
+          error.message || t('login.errors.loginFailed')
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse) => {
     try {
       setIsLoading(true);
-      await authService.login(formData.email, formData.password);
 
-      const from = location.state?.from?.pathname;
-      if (from) {
-        navigate(from, { replace: true });
-      } else {
-        navigate(-1); // ارجع صفحة واحدة للوراء لو مافيش from
+      if (!credentialResponse.credential) {
+        throw new Error(t('login.errors.noGoogleCredential'));
       }
+
+      const user = await authService.googleLogin(credentialResponse.credential);
+
+      // Store complete user data in localStorage
+      const completeUser = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: '',
+        token: user.token,
+        avatar: user.avatar
+      };
+      localStorage.setItem('currentUser', JSON.stringify(completeUser));
+
+      const redirectPath = location.state?.from?.pathname || "/account";
+      navigate(redirectPath, { replace: true });
     } catch (error: any) {
-      setApiError(
-        error.message ||
-          "Login failed. Please check your credentials and try again."
-      );
+      setApiError(error.message || t('login.errors.googleLoginFailed'));
     } finally {
       setIsLoading(false);
     }
-  }
-};
-
-const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse) => {
-  try {
-    setIsLoading(true);
-
-    if (!credentialResponse.credential) {
-      throw new Error("No credential received from Google");
-    }
-
-    await authService.googleLogin(credentialResponse.credential);
-
-    const redirectPath = location.state?.from?.pathname;
-    if (redirectPath) {
-      navigate(redirectPath, { replace: true });
-    } else {
-      navigate(-1);
-    }
-  } catch (error: any) {
-    setApiError(error.message || "Google login failed. Please try again.");
-  } finally {
-    setIsLoading(false);
-  }
-};
-
+  };
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className={`flex h-screen bg-gray-100 ${i18n.language === 'ar' ? 'text-right' : 'text-left'}`}>
       {/* Left Half: Image */}
       <div className="hidden md:flex flex-1 justify-center items-center bg-white">
         <img
           src={travelImage2}
-          alt="Travel"
+          alt={t('login.travelImageAlt')}
           className="max-w-full max-h-full object-cover"
         />
       </div>
@@ -149,10 +159,10 @@ const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse) =
       <div className="flex-1 flex flex-col justify-center items-center bg-white p-4">
         <div className="w-full max-w-md">
           <h1 className="text-center mb-2 font-yesteryear text-5xl text-[#DF6951]">
-            Log In
+            {t('login.title')}
           </h1>
           <p className="text-center mb-5 text-gray-600 text-lg font-volkhov">
-            Make the world your home
+            {t('login.subtitle')}
           </p>
 
           {apiError && (
@@ -165,7 +175,7 @@ const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse) =
             {/* Email Field */}
             <div className="mb-4">
               <label htmlFor="email" className="block mb-2 text-gray-700">
-                Email
+                {t('login.emailLabel')}
               </label>
               <input
                 type="email"
@@ -179,6 +189,7 @@ const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse) =
                     : "border-gray-300 focus:ring-[#DF6951]"
                 }`}
                 disabled={isLoading}
+                placeholder={t('login.emailPlaceholder')}
               />
               {errors.email && (
                 <p className="text-red-500 text-xs mt-1">{errors.email}</p>
@@ -188,7 +199,7 @@ const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse) =
             {/* Password Field */}
             <div className="mb-4">
               <label htmlFor="password" className="block mb-2 text-gray-700">
-                Password
+                {t('login.passwordLabel')}
               </label>
               <input
                 type="password"
@@ -202,6 +213,7 @@ const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse) =
                     : "border-gray-300 focus:ring-[#DF6951]"
                 }`}
                 disabled={isLoading}
+                placeholder={t('login.passwordPlaceholder')}
               />
               {errors.password && (
                 <p className="text-red-500 text-xs mt-1">{errors.password}</p>
@@ -209,10 +221,12 @@ const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse) =
               <button
                 type="button"
                 onClick={handleForgotPassword}
-                className="text-right mt-2 text-[#DF6951] hover:text-[#C6533E] text-sm font-medium"
+                className={`mt-2 text-[#DF6951] hover:text-[#C6533E] text-sm font-medium ${
+                  i18n.language === 'ar' ? 'text-left' : 'text-right'
+                }`}
                 disabled={isLoading}
               >
-                Forgot Password?
+                {t('login.forgotPassword')}
               </button>
             </div>
 
@@ -224,13 +238,13 @@ const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse) =
               }`}
               disabled={isLoading}
             >
-              {isLoading ? "Logging In..." : "Log In"}
+              {isLoading ? t('login.loggingIn') : t('login.loginButton')}
             </button>
 
             {/* Divider */}
             <div className="flex items-center my-6">
               <div className="flex-grow border-t border-gray-300"></div>
-              <span className="mx-4 text-gray-500">or</span>
+              <span className="mx-4 text-gray-500">{t('login.orDivider')}</span>
               <div className="flex-grow border-t border-gray-300"></div>
             </div>
 
@@ -244,7 +258,7 @@ const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse) =
                 <GoogleLogin
                   onSuccess={handleGoogleLogin}
                   onError={() => {
-                    setApiError("Google login failed. Please try again.");
+                    setApiError(t('login.errors.googleLoginFailed'));
                   }}
                   width="100%"
                   size="large"
@@ -258,14 +272,14 @@ const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse) =
 
             {/* Sign Up Redirect */}
             <p className="text-center text-gray-600 text-sm">
-              Don't have an account?{" "}
+              {t('login.noAccount')}{" "}
               <button
                 type="button"
                 onClick={handleSignUpRedirect}
                 className="text-[#DF6951] hover:text-[#C6533E] font-bold"
                 disabled={isLoading}
               >
-                Sign up!
+                {t('login.signUpLink')}
               </button>
             </p>
           </form>

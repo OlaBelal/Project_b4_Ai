@@ -6,11 +6,11 @@ import { authService } from '../services/authService';
 import { saveInteraction } from '../services/localStorageService';
 import { calculateTotal } from '../services/calculationService';
 import { UserInteraction } from '../interfaces/userInteraction';
-import { fetchDiscountedTours } from '../services/travelService';
+import { fetchNewestTours } from '../services/travelService';
 import { Tour } from '../types';
 import { API_BASE_URL } from '../services/apiConfig';
 
-const DiscountedTours = () => {
+const NewestTours = () => {
   const [tours, setTours] = useState<Tour[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
@@ -24,16 +24,16 @@ const DiscountedTours = () => {
   useEffect(() => {
     const loadTours = async () => {
       try {
-        const data = await fetchDiscountedTours();
-        const formattedTours = data.map(tour => ({
+        const data = await fetchNewestTours();
+        const formattedTours = data.items.map(tour => ({
           ...tour,
           imageUrls: Array.isArray(tour.imageUrls) ? tour.imageUrls : [tour.imageUrls || ''],
           rating: tour.rating || Math.floor(Math.random() * 2) + 3 + Math.random() // Random rating between 3-5 if not provided
         }));
         setTours(formattedTours);
       } catch (err) {
-        setError('Failed to load discounted tours');
-        console.error('Error loading discounted tours:', err);
+        setError('Failed to load newest tours');
+        console.error('Error loading newest tours:', err);
       } finally {
         setLoading(false);
       }
@@ -79,7 +79,7 @@ const DiscountedTours = () => {
   const requireAuth = (action: () => void) => {
     if (!authService.isAuthenticated()) {
       if (window.confirm('You need to login first. Do you want to login now?')) {
-        navigate('/login', { state: { from: '/discounted-tours' } });
+        navigate('/login', { state: { from: '/newest-tours' } });
       }
       return false;
     }
@@ -199,7 +199,7 @@ const DiscountedTours = () => {
           <div className="text-red-500 mb-4">{error}</div>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+            className="px-4 py-2 text-orange-500 text-white rounded text-orange-500"
           >
             Try Again
           </button>
@@ -212,11 +212,11 @@ const DiscountedTours = () => {
     return (
       <section className="py-16 bg-gradient-to-b from-white to-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Discounted Tours</h2>
-          <p className="text-gray-600 mb-8">No discounted tours available at the moment</p>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Newest Tours</h2>
+          <p className="text-gray-600 mb-8">No newest tours available at the moment</p>
           <button
             onClick={() => navigate('/tours')}
-            className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+            className="px-4 py-2 text-orange-500 text-white rounded text-orange-500"
           >
             View All Tours
           </button>
@@ -230,13 +230,13 @@ const DiscountedTours = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-12">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Discounted Tours</h2>
-            <p className="text-gray-600">Special offers for your next adventure</p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">Newest Tours</h2>
+            <p className="text-gray-600">Discover our latest travel experiences</p>
           </div>
           <div className="hidden md:block">
-            <div className="inline-flex items-center px-4 py-2 bg-orange-100 text-orange-600 rounded-full">
+            <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-orange-500 rounded-full">
               <Tag size={20} className="mr-2" />
-              Limited Time Offer
+              Just Added
             </div>
           </div>
         </div>
@@ -249,23 +249,23 @@ const DiscountedTours = () => {
           >
             <div className="relative h-[400px] lg:h-[500px] rounded-xl overflow-hidden">
               <img
-  src={
-    currentTour.coverImageUrl && currentTour.coverImageUrl.trim() !== ''
-      ? currentTour.coverImageUrl.startsWith('http')
-        ? currentTour.coverImageUrl
-        : `${API_BASE_URL}/${currentTour.coverImageUrl}`
-      : currentTour.imageUrls?.length > 0
-        ? currentTour.imageUrls[0].startsWith('http')
-          ? currentTour.imageUrls[0]
-          : `${API_BASE_URL}/${currentTour.imageUrls[0]}`
-        : `${API_BASE_URL}/default-tour.jpg`
-  }
-  alt={currentTour.title}
-  className="w-full h-full object-cover transition-transform duration-300 ease-out transform hover:scale-105"
-  onError={(e) => {
-    (e.target as HTMLImageElement).src = `${API_BASE_URL}/default-tour.jpg`;
-  }}
-/>
+                src={
+                  currentTour.coverImageUrl && currentTour.coverImageUrl.trim() !== ''
+                    ? currentTour.coverImageUrl.startsWith('http')
+                      ? currentTour.coverImageUrl
+                      : `${API_BASE_URL}/${currentTour.coverImageUrl}`
+                    : currentTour.imageUrls?.length > 0
+                      ? currentTour.imageUrls[0].startsWith('http')
+                        ? currentTour.imageUrls[0]
+                        : `${API_BASE_URL}/${currentTour.imageUrls[0]}`
+                      : `${API_BASE_URL}/default-tour.jpg`
+                }
+                alt={currentTour.title}
+                className="w-full h-full object-cover transition-transform duration-300 ease-out transform hover:scale-105"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = `${API_BASE_URL}/default-tour.jpg`;
+                }}
+              />
 
               <div className="absolute top-4 right-4 flex items-center space-x-2">
                 <button
@@ -296,7 +296,7 @@ const DiscountedTours = () => {
                   <span className="text-sm font-medium">{currentTour.rating?.toFixed(1) || '4.5'}</span>
                 </div>
               </div>
-              <p className="text-gray-600 text-lg mb-8">{currentTour.description || 'Explore this amazing destination with our special discounted tour.'}</p>
+              <p className="text-gray-600 text-lg mb-8">{currentTour.description || 'Explore this amazing new destination with our latest tour offering.'}</p>
               
               <div className="grid grid-cols-2 gap-6 mb-8">
                 <div className="flex items-center text-gray-600">
@@ -392,4 +392,4 @@ const DiscountedTours = () => {
   );
 };
 
-export default DiscountedTours;
+export default NewestTours;

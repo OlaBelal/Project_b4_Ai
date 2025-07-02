@@ -18,12 +18,19 @@ const LeavingSoonTours = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const userId = authService.getCurrentUser()?.id || 'anonymous';
 
   useEffect(() => {
     const loadTours = async () => {
       try {
         const data = await fetchLeavingSoonTours();
-        setTours(data.items || []);
+        const formattedTours = (data.items || []).map(tour => ({
+          ...tour,
+          imageUrls: Array.isArray(tour.imageUrls) ? tour.imageUrls : [tour.imageUrls || ''],
+          coverImageUrl: tour.coverImageUrl || '',
+          rating: tour.rating || Math.floor(Math.random() * 2) + 3 + Math.random()
+        }));
+        setTours(formattedTours);
       } catch (err) {
         setError('Failed to load leaving soon tours');
         console.error('Error loading leaving soon tours:', err);
@@ -49,12 +56,13 @@ const LeavingSoonTours = () => {
   const handleBookNow = (tour: Tour) => {
     requireAuth(() => {
       const interaction: UserInteraction = {
+        userId,
         id: tour.id.toString(),
         type: 'travel',
         checkout: 1,
         favourite: isFavorite(tour.id),
         booked: true,
-        total: 0
+        total: tour.price || 0
       };
       
       interaction.total = calculateTotal(interaction);
@@ -65,32 +73,38 @@ const LeavingSoonTours = () => {
           title: tour.title,
           price: tour.price,
           location: tour.destinationCity,
+          imageUrl: tour.coverImageUrl || tour.imageUrls?.[0] || `${API_BASE_URL}/default-tour.jpg`
         },
       });
     });
   };
 
- const handleFavorite = (tour: Tour) => {
-  requireAuth(() => {
-    const isCurrentlyFavorite = isFavorite(tour.id);
-    toggleFavorite(tour); 
-    
-    const interaction: UserInteraction = {
-      id: tour.id.toString(),
-      type: 'travel',
-      checkout: 0,
-      favourite: !isCurrentlyFavorite,
-      booked: false,
-      total: 0
-    };
-    
-    interaction.total = calculateTotal(interaction);
-    saveInteraction(interaction);
-  });
-};
+  const handleFavorite = (tour: Tour) => {
+    requireAuth(() => {
+      const isCurrentlyFavorite = isFavorite(tour.id);
+      toggleFavorite({
+        ...tour,
+        image: tour.coverImageUrl || tour.imageUrls?.[0] || `${API_BASE_URL}/default-tour.jpg`
+      });
+      
+      const interaction: UserInteraction = {
+        userId,
+        id: tour.id.toString(),
+        type: 'travel',
+        checkout: 0,
+        favourite: !isCurrentlyFavorite,
+        booked: false,
+        total: 0
+      };
+      
+      interaction.total = calculateTotal(interaction);
+      saveInteraction(interaction);
+    });
+  };
 
   const handleSeeDetails = (tour: Tour) => {
     const interaction: UserInteraction = {
+      userId,
       id: tour.id.toString(),
       type: 'travel',
       checkout: 0,
@@ -181,7 +195,7 @@ const LeavingSoonTours = () => {
                     <div className="bg-white rounded-lg shadow-lg overflow-hidden relative">
                       <button
                         onClick={() => handleFavorite(tour)}
-                        className="absolute top-4 left-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm"
+                        className="absolute top-4 left-4 z-10 p-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white transition-colors"
                         aria-label={isFavorite(tour.id) ? 'Remove from favorites' : 'Add to favorites'}
                       >
                         <Heart
@@ -197,25 +211,29 @@ const LeavingSoonTours = () => {
                       <div className="relative">
                         <img
                           src={
-                            tour.imageUrls?.length > 0
-                              ? tour.imageUrls[0].startsWith('http')
-                                ? tour.imageUrls[0]
-                                : `${API_BASE_URL}/${tour.imageUrls[0]}`
-                              : `${API_BASE_URL}/default-tour.jpg`
+                            tour.coverImageUrl && tour.coverImageUrl.trim() !== ''
+                              ? tour.coverImageUrl.startsWith('http')
+                                ? tour.coverImageUrl
+                                : `${API_BASE_URL}/${tour.coverImageUrl}`
+                              : tour.imageUrls?.length > 0
+                                ? tour.imageUrls[0].startsWith('http')
+                                  ? tour.imageUrls[0]
+                                  : `${API_BASE_URL}/${tour.imageUrls[0]}`
+                                : `${API_BASE_URL}/default-tour.jpg`
                           }
                           alt={tour.title}
-                          className="w-full h-64 object-cover"
+                          className="w-full h-64 object-cover hover:opacity-90 transition-opacity"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = `${API_BASE_URL}/default-tour.jpg`;
                           }}
                         />
-                        <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full text-sm font-semibold text-orange-500">
-                          £{tour.price}
+                        <div className="absolute top-4 right-4 bg-white px-3 py-1 rounded-full text-sm font-semibold text-orange-500 shadow-sm">
+                          £{tour.price || 0}
                         </div>
                       </div>
                       <div className="p-6">
                         <div className="flex items-center justify-between mb-2">
-                          <h3 className="text-xl font-semibold text-gray-900">
+                          <h3 className="text-xl font-semibold text-gray-900 line-clamp-1">
                             {tour.title}
                           </h3>
                           <div className="flex items-center">
@@ -237,14 +255,14 @@ const LeavingSoonTours = () => {
                         </div>
                         <div className="flex space-x-4 mt-4">
                           <button
-                            className={`w-1/2 ${tour.availableSeats > 0 ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} text-white py-2 rounded-md transition-colors`}
+                            className={`flex-1 ${tour.availableSeats > 0 ? 'bg-orange-500 hover:bg-orange-600' : 'bg-gray-400 cursor-not-allowed'} text-white py-2 rounded-md transition-colors`}
                             onClick={() => tour.availableSeats > 0 && handleBookNow(tour)}
                             disabled={tour.availableSeats <= 0}
                           >
                             {tour.availableSeats > 0 ? 'Book Now' : 'Sold Out'}
                           </button>
                           <button
-                            className="w-1/2 bg-gray-200 text-gray-700 py-2 rounded-md hover:bg-gray-300 transition-colors"
+                            className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-md hover:bg-gray-300 transition-colors"
                             onClick={() => handleSeeDetails(tour)}
                           >
                             See Details
@@ -259,14 +277,14 @@ const LeavingSoonTours = () => {
 
             <button
               onClick={prevSlide}
-              className="absolute left-0 top-1/2 -translate-y-1/2 bg-white p-2 rounded-full shadow-md z-10"
+              className="absolute left-0 top-1/2 -translate-y-1/2 bg-white p-2 rounded-full shadow-md z-10 hover:bg-gray-100 transition-colors"
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
 
             <button
               onClick={nextSlide}
-              className="absolute right-0 top-1/2 -translate-y-1/2 bg-white p-2 rounded-full shadow-md z-10"
+              className="absolute right-0 top-1/2 -translate-y-1/2 bg-white p-2 rounded-full shadow-md z-10 hover:bg-gray-100 transition-colors"
             >
               <ChevronRight className="w-6 h-6" />
             </button>
@@ -276,7 +294,7 @@ const LeavingSoonTours = () => {
                 <button
                   key={index}
                   onClick={() => goToSlide(index)}
-                  className={`w-3 h-3 rounded-full ${currentSlide === index ? 'bg-orange-500' : 'bg-gray-300'}`}
+                  className={`w-3 h-3 rounded-full transition-all ${currentSlide === index ? 'bg-orange-500 scale-125' : 'bg-gray-300 hover:bg-orange-300'}`}
                 />
               ))}
             </div>
