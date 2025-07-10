@@ -119,19 +119,35 @@ export interface UpcomingTravel {
 
 export const getCompanies = async (
   pageIndex: number = 1,
-  pageSize: number = 5
-): Promise<{ items: Company[], totalCount: number }> => {
+  pageSize: number = 5,
+  sort?: string,
+  rate?: number,
+  search?: string,
+  verifiedOnly?: boolean,
+  address?: string
+): Promise<{ items: Company[]; totalCount: number; totalPages: number }> => {
   try {
-    const response = await axios.get<{ items: Company[], totalCount: number }>(
-      `${API_BASE_URL}/api/Company`,
-      {
-        params: {
-          PageIndex: pageIndex,
-          PageSize: pageSize
-        }
-      }
-    );
-    return response.data;
+    const params = new URLSearchParams();
+    params.append('PageIndex', pageIndex.toString());
+    params.append('PageSize', pageSize.toString());
+    
+    if (sort) params.append('sort', sort);
+    if (rate) params.append('rate', rate.toString());
+    if (search) params.append('Search', search);
+    if (verifiedOnly) params.append('verified', 'true');
+    if (address && address !== 'All') params.append('address', address);
+
+    const response = await axios.get<{
+      items: Company[];
+      totalCount: number;
+      totalPages: number;
+    }>(`${API_BASE_URL}/api/Company`, { params });
+
+    return {
+      items: response.data.items,
+      totalCount: response.data.totalCount,
+      totalPages: response.data.totalPages,
+    };
   } catch (error) {
     console.error('Error fetching companies:', error);
     throw error;
@@ -143,7 +159,6 @@ export const getCompanyDetails = async (id: number): Promise<Company> => {
     const response = await axios.get<Company>(`${API_BASE_URL}/api/Company/${id}`);
     const companyData = response.data;
     
-    // تحويل البيانات لتتناسب مع الواجهة
     const formattedCompany: Company = {
       ...companyData,
       phoneNumber: companyData.phoneNumber || '',
@@ -168,9 +183,8 @@ export const submitReview = async (
   review: { name: string; text: string; rating: number; avatar?: string }
 ): Promise<Review> => {
   try {
-    // تحويل البيانات لتتناسب مع API
     const apiReview = {
-      userId: 'current-user-id', // يجب استبدالها بآلية الحصول على ID المستخدم الحالي
+      userId: 'current-user-id',
       companyId,
       rating: review.rating,
       message: review.text
@@ -181,7 +195,6 @@ export const submitReview = async (
       apiReview
     );
 
-    // تحويل الاستجابة لتتناسب مع واجهة Review
     const formattedReview: Review = {
       id: parseInt(response.data.userId),
       name: review.name,
@@ -200,7 +213,6 @@ export const submitReview = async (
   }
 };
 
-// دالة مساعدة لحساب الأيام المتبقية
 export const calculateDaysLeft = (dateString: string): number => {
   const today = new Date();
   const targetDate = new Date(dateString);
@@ -208,7 +220,6 @@ export const calculateDaysLeft = (dateString: string): number => {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 
-// دالة مساعدة لتحويل WorkingHour إلى التنسيق المطلوب
 export const formatWorkingHours = (workingHours: WorkingHour[]): { day: string; hours: string }[] => {
   return workingHours.map(wh => ({
     day: wh.dayOfWeek,
@@ -216,10 +227,8 @@ export const formatWorkingHours = (workingHours: WorkingHour[]): { day: string; 
   }));
 };
 
-// دالة لإنشاء بيانات مشابهة للشركات (يمكن استبدالها بطلب API حقيقي)
 export const getSimilarCompanies = async (companyId: number): Promise<SimilarCompany[]> => {
   try {
-    // هذا مثال - يمكن استبداله بطلب API حقيقي
     return [
       {
         id: 1,
@@ -240,10 +249,8 @@ export const getSimilarCompanies = async (companyId: number): Promise<SimilarCom
   }
 };
 
-// دالة لإنشاء بيانات المنشورات (يمكن استبدالها بطلب API حقيقي)
 export const getCompanyPosts = async (companyId: number): Promise<Post[]> => {
   try {
-    // هذا مثال - يمكن استبداله بطلب API حقيقي
     return [
       {
         id: 1,

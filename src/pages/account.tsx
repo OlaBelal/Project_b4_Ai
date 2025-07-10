@@ -10,7 +10,7 @@ interface UserData {
   avatar?: string;
 }
 
-const AccountPage = () => {
+const Account = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -250,7 +250,7 @@ const AccountPage = () => {
                 onClick={triggerFileInput}
                 className="mt-2 text-sm text-[#DF6951] hover:underline"
               >
-                {t('account.changePhoto')}
+                {t('Change Photo')}
               </button>
             )}
           </div>
@@ -375,7 +375,7 @@ const AccountPage = () => {
 
                 <div>
                   <h3 className="text-gray-500 text-sm">{t('phone')}</h3>
-                  <p className="text-lg">{userData.phone || t('phoneNotSet')}</p>
+                  <p className="text-lg">{userData.phone || t('Phone Not Set')}</p>
                 </div>
               </div>
 
@@ -407,4 +407,4 @@ const AccountPage = () => {
   );
 };
 
-export default AccountPage;
+export default Account;

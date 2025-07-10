@@ -1,25 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useContext } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import HeaderSection from '../components/HeaderSection';
 import NavigationTabs from '../components/NavigationTabs';
 import TabContent from '../components/TabContent';
 import zr3Image from '../assets/images/zr3.png';
 import { Tour } from '../types';
 import { fetchTourDetails } from '../services/travelService';
+import { ChatbotContext } from '../context/ChatbotContext';
 
 const TravelWithUs: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toggleChat } = useContext(ChatbotContext);
   const [tour, setTour] = useState<Tour | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [activeTab, setActiveTab] = useState<string>('Information');
 
   useEffect(() => {
     const loadTourData = async () => {
       try {
-        // احصل على tourId من location.state
-        const tourId = location.state?.tour?.id || location.state?.tourId;
+        // Get tourId from location.state whether from chatbot or direct link
+        const tourId = location.state?.id || location.state?.tour?.id || location.state?.tourId;
         
         if (!tourId) {
           throw new Error('Tour ID is missing');
@@ -37,6 +39,11 @@ const TravelWithUs: React.FC = () => {
 
     loadTourData();
   }, [location.state]);
+
+  useEffect(() => {
+    // Close the chatbot when opening the travel page
+    toggleChat(); // Removed the argument here
+  }, [toggleChat]);
 
   if (loading) {
     return <div className="text-center py-10">Loading tour details...</div>;

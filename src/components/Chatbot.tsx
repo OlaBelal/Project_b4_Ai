@@ -1,26 +1,38 @@
 import { useContext, useState, useEffect } from 'react';
 import { FaPaperPlane } from 'react-icons/fa';
+import { useNavigate } from 'react-router-dom';
 import { ChatbotContext } from '../context/ChatbotContext';
 import kemetImage from '../assets/images/weeeeeeeeeee.jpg';
+import * as signalR from '@microsoft/signalr';
+
+interface Travel {
+  id: number;
+  title: string;
+  description?: string;
+  imageUrl?: string;
+  price?: number;
+}
+
+interface Event {
+  id: number;
+  name: string;
+  date: string | Date;
+  location?: string;
+  description?: string;
+}
 
 interface ChatMessage {
   text: string;
   sender: 'user' | 'bot';
   timestamp: Date;
-  travels?: Array<{
-    id: number;
-    title: string;
-    description?: string;
-    imageUrl?: string;
-    price?: number;
-  }>;
-  events?: Array<{
-    id: number;
-    name: string;
-    date: string | Date;
-    location?: string;
-    description?: string;
-  }>;
+  travels?: Travel[];
+  events?: Event[];
+}
+
+interface ServerResponse {
+  response: string;
+  travels?: Travel[];
+  events?: Event[];
 }
 
 const Chatbot = () => {
@@ -28,17 +40,85 @@ const Chatbot = () => {
     isChatOpen, 
     messages, 
     toggleChat, 
-    sendMessage,
     setMessages
   } = useContext(ChatbotContext);
   
+  const navigate = useNavigate();
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [connection, setConnection] = useState<signalR.HubConnection | null>(null);
+
+  useEffect(() => {
+    const connectionOptions: signalR.IHttpConnectionOptions = {
+      skipNegotiation: true,
+      transport: signalR.HttpTransportType.WebSockets,
+      logger: signalR.LogLevel.Trace
+    };
+
+    const newConnection = new signalR.HubConnectionBuilder()
+      .withUrl("https://journeymate.runasp.net/chatHub", connectionOptions)
+      .configureLogging(signalR.LogLevel.Information)
+      .build();
+
+    setConnection(newConnection);
+
+    return () => {
+      if (newConnection) {
+        newConnection.stop();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (connection) {
+      connection.start()
+        .then(() => {
+          console.log("SignalR connection established successfully");
+          
+          connection.on("ReceiveMessage", (payload: unknown) => {
+            console.log('Received server response:', payload);
+            
+            try {
+              const serverResponse = payload as ServerResponse;
+              const botMessage: ChatMessage = {
+                text: serverResponse.response,
+                sender: 'bot',
+                timestamp: new Date(),
+                travels: serverResponse.travels,
+                events: serverResponse.events ? serverResponse.events.map(event => ({
+                  ...event,
+                  date: event.date ? new Date(event.date) : new Date()
+                })) : undefined
+              };
+              
+              setMessages(previousMessages => [...previousMessages, botMessage]);
+            } catch (error) {
+              console.error('Error processing server response:', error);
+              const errorMessage: ChatMessage = {
+                text: 'Error processing server response',
+                sender: 'bot',
+                timestamp: new Date()
+              };
+              setMessages(previousMessages => [...previousMessages, errorMessage]);
+            }
+          });
+        })
+        .catch(error => {
+          console.error("SignalR connection error:", error);
+          const errorMessage: ChatMessage = {
+            text: 'Connection error: ' + (error instanceof Error ? error.message : 'Failed to connect'),
+            sender: 'bot',
+            timestamp: new Date()
+          };
+          setMessages(previousMessages => [...previousMessages, errorMessage]);
+        });
+    }
+  }, [connection, setMessages]);
 
   useEffect(() => {
     if (isChatOpen && messages.length === 0) {
       const welcomeMessage: ChatMessage = {
-        text: "Hi, I am Kemet. I'm here to assist you in exploring Egypt. How can I help you?",
+        text: "Hello, I am Kemet. I'm here to help you explore Egypt. How may I assist you today?",
         sender: 'bot',
         timestamp: new Date()
       };
@@ -47,41 +127,52 @@ const Chatbot = () => {
   }, [isChatOpen, messages.length, setMessages]);
 
   const handleSendMessage = async () => {
-    if (inputMessage.trim() === '') return;
+    if (inputMessage.trim() === '' || !connection) {
+      return;
+    }
     
-    // Add user message to chat
     const userMessage: ChatMessage = {
       text: inputMessage,
       sender: 'user',
       timestamp: new Date()
     };
     
-   
+    setMessages(previousMessages => [...previousMessages, userMessage]);
     setInputMessage('');
     setIsLoading(true);
 
     try {
-      // Send message via context (which uses SignalR)
-      await sendMessage(inputMessage);
+      await connection.invoke("SendMessage", inputMessage);
     } catch (error) {
+      console.error("Error sending message:", error);
       const errorMessage: ChatMessage = {
-        text: 'Sorry, there was an error processing your request. Please try again later.',
+        text: 'Error sending message: ' + (error instanceof Error ? error.message : 'Please try again'),
         sender: 'bot',
         timestamp: new Date()
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(previousMessages => [...previousMessages, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatDate = (dateString: string | Date) => {
-    const date = new Date(dateString);
+  const formatDate = (dateInput: string | Date) => {
+    const date = new Date(dateInput);
     return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  const handleTravelClick = (travelId: number) => {
+    navigate(`/travel-with-us`, { state: { id: travelId } });
+    toggleChat(); // Close the chat when navigating
+  };
+
+  const handleEventClick = (eventId: number) => {
+    navigate(`/event-details`, { state: { id: eventId } });
+    toggleChat(); // Close the chat when navigating
   };
 
   return (
@@ -96,7 +187,7 @@ const Chatbot = () => {
         <img 
           src={kemetImage} 
           alt="Kemet Assistant" 
-          className="w-16 h-16 rounded-full object-cover border-2 border-white"
+          className="w-16 h-16 rounded-full object-cover"
         />
       </button>
 
@@ -108,14 +199,13 @@ const Chatbot = () => {
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
           }}
         >
-          {/* Chat header */}
           <div className="bg-[#DF6951] text-white p-3 flex justify-between items-center rounded-t-lg">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center">
                 <img 
                   src={kemetImage} 
                   alt="Kemet" 
-                  className="w-6 h-6 rounded-full object-cover"
+                  className="w-10 h-10 rounded-full object-cover"
                 />
               </div>
               <span className="font-semibold">Kemet Assistant</span>
@@ -142,7 +232,6 @@ const Chatbot = () => {
             </button>
           </div>
 
-          {/* Chat messages area */}
           <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
             {messages.map((message, index) => (
               <div
@@ -164,7 +253,6 @@ const Chatbot = () => {
                 >
                   <p className="whitespace-pre-wrap">{message.text}</p>
                   
-                  {/* Display Travels if available */}
                   {message.travels && message.travels.length > 0 && (
                     <div className="mt-3">
                       <h4 className="font-bold mb-2 text-sm">Suggested Travel Packages:</h4>
@@ -172,14 +260,22 @@ const Chatbot = () => {
                         {message.travels.map((travel) => (
                           <div 
                             key={travel.id} 
-                            className="p-2 bg-white bg-opacity-30 rounded-lg"
+                            className="p-2 bg-white bg-opacity-30 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                            onClick={() => handleTravelClick(travel.id)}
                           >
+                            {travel.imageUrl && (
+                              <img 
+                                src={travel.imageUrl} 
+                                alt={travel.title} 
+                                className="w-full h-32 object-cover rounded-t-lg mb-2"
+                              />
+                            )}
                             <div className="font-medium">{travel.title}</div>
                             {travel.description && (
-                              <p className="text-xs mt-1">{travel.description}</p>
+                              <p className="text-xs mt-1 text-gray-600">{travel.description}</p>
                             )}
                             {travel.price && (
-                              <div className="text-xs mt-1 font-semibold">
+                              <div className="text-xs mt-1 font-semibold text-[#DF6951]">
                                 From ${travel.price.toLocaleString()}
                               </div>
                             )}
@@ -189,7 +285,6 @@ const Chatbot = () => {
                     </div>
                   )}
                   
-                  {/* Display Events if available */}
                   {message.events && message.events.length > 0 && (
                     <div className="mt-3">
                       <h4 className="font-bold mb-2 text-sm">Upcoming Events:</h4>
@@ -197,15 +292,16 @@ const Chatbot = () => {
                         {message.events.map((event) => (
                           <div 
                             key={event.id}
-                            className="p-2 bg-white bg-opacity-30 rounded-lg"
+                            className="p-2 bg-white bg-opacity-30 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
+                            onClick={() => handleEventClick(event.id)}
                           >
                             <div className="font-medium">{event.name}</div>
-                            <div className="text-xs mt-1">
+                            <div className="text-xs mt-1 text-gray-600">
                               {formatDate(event.date)}
                               {event.location && ` • ${event.location}`}
                             </div>
                             {event.description && (
-                              <p className="text-xs mt-1">{event.description}</p>
+                              <p className="text-xs mt-1 text-gray-600">{event.description}</p>
                             )}
                           </div>
                         ))}
@@ -229,21 +325,20 @@ const Chatbot = () => {
             )}
           </div>
 
-          {/* Message input area */}
           <div className="border-t border-gray-200 p-3 bg-white flex items-center">
             <input
               type="text"
               value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+              onChange={(event) => setInputMessage(event.target.value)}
+              onKeyPress={(event) => event.key === 'Enter' && handleSendMessage()}
               placeholder="Ask about Egypt..."
-              className="flex-1 border border-gray-300 rounded-l-lg px-4 py-3 focus:outline-none focus:ring-1 focus:ring-[#DF6951] focus:border-[#DF6951] transition-colors duration-200"
+              className="flex-1 border border-gray-300 rounded-l-lg px-4 h-12 focus:outline-none focus:ring-1 focus:ring-[#DF6951] focus:border-[#DF6951] transition-colors duration-200"
               disabled={isLoading}
             />
             <button
               onClick={handleSendMessage}
               disabled={isLoading || inputMessage.trim() === ''}
-              className={`px-4 py-3 rounded-r-lg transition-colors duration-200 w-16 flex items-center justify-center ${
+              className={`h-12 px-4 rounded-r-lg transition-colors duration-200 w-16 flex items-center justify-center ${
                 isLoading || inputMessage.trim() === ''
                   ? 'bg-gray-300 cursor-not-allowed'
                   : 'bg-[#DF6951] hover:bg-[#C55A42] text-white'

@@ -14,8 +14,7 @@ interface Category {
   categoryName: string;
 }
 
-// Tourism company requests (GetInTouch)
-export const FORM_API_BASE_URL = 'https://journymatedashboard.runasp.net';
+
 
 export interface TourismCompanyRequest {
   CompanyName: string;
@@ -38,69 +37,76 @@ export interface TourismCompanyRequest {
 
 export const submitTourismCompanyRequest = async (
   requestData: Omit<TourismCompanyRequest, 'Status' | 'CreatedAt'>
-): Promise<Response> => {
+): Promise<any> => {
   try {
-    const response = await fetch(`${FORM_API_BASE_URL}/api/TourismCompanyRequestApi/`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        ...requestData,
-        Status: 'Pending',
-        CreatedAt: new Date().toISOString()
-      }),
+    const payload = {
+      CompanyName: requestData.CompanyName || '',
+      Owner: requestData.Owner || '',
+      Email: requestData.Email || '',
+      CommercialRegistrationNumber: requestData.CommercialRegistrationNumber || '',
+      PhoneNumber: requestData.PhoneNumber || '',
+      WebsiteUrl: requestData.WebsiteUrl || '',
+      CompanyAddress: requestData.CompanyAddress || '',
+      Description: requestData.Description || '',
+      ContactPersonName: requestData.ContactPersonName || '',
+      ContactPersonNumber: requestData.ContactPersonNumber || '',
+      TypeofTrips: requestData.TypeofTrips || '',
+      LicenseImageUrl: requestData.LicenseImageUrl || '',
+      LogoUrl: requestData.LogoUrl || '',
+      CoverImageUrl: requestData.CoverImageUrl || ''
+    };
+
+    const formData = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      formData.append(key, value);
     });
 
+      const response = await fetch(`https://journeymate.runasp.net/api/TourismCompanyRequestApi`, {
+      method: 'POST',
+      body: formData
+    });
+
+    console.log('Response status:', response.status);
+
     if (!response.ok) {
-      let errorMessage = 'Network response was not ok';
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.message || errorMessage;
-      } catch (e) {
-        console.error('Failed to parse error response', e);
-      }
-      throw new Error(errorMessage);
+      const errorText = await response.text();
+      throw new Error(errorText || 'Network response was not ok');
     }
 
-    return response;
-  } catch (error: unknown) {
-    console.error('Error submitting company request:', error);
-    if (error instanceof Error) {
-      throw new Error(error.message || 'Failed to submit company request. Please try again later.');
+    try {
+      return await response.json();
+    } catch {
+      return { success: true };
     }
-    throw new Error('Failed to submit company request. Please try again later.');
+  } catch (error) {
+    console.error('Submission error:', error);
+    throw new Error(error instanceof Error ? error.message : 'Failed to submit request');
   }
-};
 
-export const fetchTours = async (categoryId?: number): Promise<Tour[]> => {
+
+};export const fetchTours = async (): Promise<Tour[]> => {
   try {
-    const url = categoryId 
-      ? `${API_BASE_URL}/api/Travel?categoryId=${categoryId}`
-      : `${API_BASE_URL}/api/Travel`;
-    
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const responseData = await response.json();
-    
-    let toursData: any[] = [];
-    
-    if (Array.isArray(responseData)) {
-      toursData = responseData;
-    } else if (responseData.items && Array.isArray(responseData.items)) {
-      toursData = responseData.items;
-    } else if (responseData.data && Array.isArray(responseData.data)) {
-      toursData = responseData.data;
-    } else {
-      throw new Error('Invalid data format: Expected array');
-    }
+    const allTours: Tour[] = [];
+    let pageIndex = 1;
+    const pageSize = 1000;
+    let totalPages = 1;
 
-    return toursData.map((tour: any): Tour => ({
+    do {
+      const url = `${API_BASE_URL}/api/Travel?PageSize=${pageSize}&PageIndex=${pageIndex}`;
+
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch');
+
+      const data = await response.json();
+      const items = data.items || [];
+
+      allTours.push(...items);
+
+      totalPages = data.totalPages || 1;
+      pageIndex++;
+    } while (pageIndex <= totalPages);
+
+    return allTours.map((tour: any): Tour => ({
       id: tour.id,
       title: tour.title || 'Untitled Tour',
       description: tour.description || '',
@@ -112,14 +118,14 @@ export const fetchTours = async (categoryId?: number): Promise<Tour[]> => {
       departurePoint: tour.departurePoint || '',
       departurePointLat: tour.departurePointLat,
       departurePointLng: tour.departurePointLng,
-      destinationCity: tour.destinationCity || 'Unknown Destination',
+      destinationCity: tour.destinationCity || 'Unknown',
       destinationCityLat: tour.destinationCityLat,
       destinationCityLng: tour.destinationCityLng,
       transportationType: tour.transportationType || '',
       coverImageUrl: tour.coverImageUrl || '',
       amenities: Array.isArray(tour.amenities) ? tour.amenities : [],
       companyId: tour.companyId,
-      companyName: tour.companyName || 'Unknown Company',
+      companyName: tour.companyName || '',
       profileImageUrl: tour.profileImageUrl || '',
       companyProfileImageUrl: tour.companyProfileImageUrl || '',
       imageUrls: Array.isArray(tour.imageUrls) ? tour.imageUrls : [],
@@ -127,14 +133,14 @@ export const fetchTours = async (categoryId?: number): Promise<Tour[]> => {
       tags: Array.isArray(tour.tags) ? tour.tags : [],
       categoryId: tour.categoryId || null,
       rating: tour.rating,
-      itineraries: Array.isArray(tour.itineraries) 
-        ? tour.itineraries.map((it: any): Itinerary => ({
-            title: it.title || `Day ${it.dayNumber}`,
+      itineraries: Array.isArray(tour.itineraries)
+        ? tour.itineraries.map((it: any) => ({
+            title: it.title || '',
             dayNumber: it.dayNumber || 0,
             description: it.description || '',
             startTime: it.startTime || '08:00:00',
             endTime: it.endTime || '18:00:00',
-            location: it.location || 'Unknown Location',
+            location: it.location || '',
             activities: Array.isArray(it.activities) ? it.activities : [],
             includesBreakfast: it.includesBreakfast || false,
             includesLunch: it.includesLunch || false,
@@ -149,9 +155,13 @@ export const fetchTours = async (categoryId?: number): Promise<Tour[]> => {
   }
 };
 
-export const fetchNewestTours = async (): Promise<PaginatedToursResponse> => {
+
+export const fetchNewestTours = async (categoryId?: number): Promise<PaginatedToursResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/Travel?Sort=creationDate-desc&PageIndex=1&PageSize=100`);
+    const baseUrl = `${API_BASE_URL}/api/Travel?Sort=creationDate-desc&PageIndex=1&PageSize=100`;
+    const url = categoryId ? `${baseUrl}&categoryId=${categoryId}` : baseUrl;
+
+    const response = await fetch(url);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -220,9 +230,12 @@ export const fetchNewestTours = async (): Promise<PaginatedToursResponse> => {
   }
 };
 
-export const fetchDiscountedTours = async (): Promise<Tour[]> => {
+export const fetchDiscountedTours = async (categoryId?: number): Promise<Tour[]> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/Travel/discounted`);
+    const baseUrl = `${API_BASE_URL}/api/Travel/discounted`;
+    const url = categoryId ? `${baseUrl}?categoryId=${categoryId}` : baseUrl;
+    
+    const response = await fetch(url);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -285,9 +298,12 @@ export const fetchDiscountedTours = async (): Promise<Tour[]> => {
   }
 };
 
-export const fetchLeavingSoonTours = async (): Promise<{ items: Tour[] }> => {
+export const fetchLeavingSoonTours = async (categoryId?: number): Promise<{ items: Tour[] }> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/Travel/leaving-soon`);
+    const baseUrl = `${API_BASE_URL}/api/Travel/leaving-soon`;
+    const url = categoryId ? `${baseUrl}?categoryId=${categoryId}` : baseUrl;
+    
+    const response = await fetch(url);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

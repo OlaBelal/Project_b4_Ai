@@ -1,28 +1,29 @@
-import React from 'react';
+import { Link } from 'react-router-dom';
 
 const destinations = [
   {
     id: 1,
     name: 'Pyramids of Giza',
-    image: 'https://images.unsplash.com/photo-1503177119275-0aa32b3a9368?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+    image: 'https://toppng.com/uploads/preview/egyptian-pyramids-11547843159jpseqoon3h.jpg',
     description: 'Visit the last remaining wonder of the ancient world'
+  },
+  {
+    id: 3,
+    name: 'Nuweiba',
+    image: 'https://www.kadmartravel.com/images/subpages/83682Created_At_1691396465.Nuweiba.jpg',
+    description: 'Discover world-class diving and pristine beaches'
   },
   {
     id: 2,
     name: 'Luxor Temple',
-    image: 'https://images.unsplash.com/photo-1539768942893-daf53e448371?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+    image: 'https://egyptra.com/wp-content/uploads/2024/12/pngtree-egypt-luxor-temple-view-image_15653539.jpg',
     description: 'Explore the magnificent temples of ancient Thebes'
   },
-  {
-    id: 3,
-    name: 'Red Sea',
-    image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
-    description: 'Discover world-class diving and pristine beaches'
-  },
+  
   {
     id: 4,
-    name: 'Valley of the Kings',
-    image: 'https://images.unsplash.com/photo-1560153216-a7ae9d3f8631?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80',
+    name: 'Siwa Oasis',
+    image: 'https://betamedia.experienceegypt.eg/media/experienceegypt/img/Original/2024/2/20/2024_2_20_20_18_1_705.jpeg',
     description: "Uncover the secrets of pharaohs' tombs"
   }
 ];
@@ -49,9 +50,22 @@ const PopularDestinations = () => {
               <div className="p-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">{destination.name}</h3>
                 <p className="text-gray-600">{destination.description}</p>
-                <button className="mt-4 text-amber-600 font-semibold hover:text-amber-700">
+                <Link
+                  to={
+                    destination.id === 1
+                      ? "/pyramids"
+                      : destination.id === 2
+                      ? "/luxor-temple"
+                      : destination.id === 3
+                      ? "/nuweiba"
+                      : destination.id === 4
+                      ? "/Siwa"
+                      : "#"
+                  }
+                  className="mt-4 text-amber-600 font-semibold hover:text-amber-700 inline-block"
+                >
                   Learn More →
-                </button>
+                </Link>
               </div>
             </div>
           ))}

@@ -2,12 +2,12 @@ import { useState, ChangeEvent, FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import getInTouchImage from '../assets/images/getintouch1.png';
 import termsImage from '../assets/images/273 1.png';
-import { submitTourismCompanyRequest } from '../services/travelService';
+import { submitTourismCompanyRequest, TourismCompanyRequest } from '../services/travelService';
 
 const GetInTouch = () => {
   const { t, i18n } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<Omit<TourismCompanyRequest, 'Status' | 'CreatedAt'> & { acceptTerms: boolean }>({
     CompanyName: '',
     Owner: '',
     Email: '',
@@ -32,77 +32,62 @@ const GetInTouch = () => {
 
     if (type === 'checkbox') {
       const { checked } = e.target as HTMLInputElement;
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         [name]: checked,
-      });
+      }));
     } else {
-      setFormData({
-        ...formData,
+      setFormData(prev => ({
+        ...prev,
         [name]: value,
-      });
+      }));
     }
   };
-const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  setIsSubmitting(true);
-  
-  if (!formData.acceptTerms) {
-    alert(t('getInTouch.termsError'));
-    setIsSubmitting(false);
-    return;
-  }
 
-  try {
-    const requestData = {
-      CompanyName: formData.CompanyName,
-      Owner: formData.Owner,
-      Email: formData.Email,
-      CommercialRegistrationNumber: formData.CommercialRegistrationNumber,
-      PhoneNumber: formData.PhoneNumber,
-      WebsiteUrl: formData.WebsiteUrl || undefined,
-      CompanyAddress: formData.CompanyAddress,
-      Description: formData.Description,
-      ContactPersonName: formData.ContactPersonName,
-      ContactPersonNumber: formData.ContactPersonNumber,
-      TypeofTrips: formData.TypeofTrips,
-      LicenseImageUrl: formData.LicenseImageUrl,
-      LogoUrl: formData.LogoUrl,
-      CoverImageUrl: formData.CoverImageUrl
-    };
-
-    await submitTourismCompanyRequest(requestData);
-
-    alert(t('getInTouch.submissionSuccess'));
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsSubmitting(true);
     
-    setFormData({
-      CompanyName: '',
-      Owner: '',
-      Email: '',
-      CommercialRegistrationNumber: '',
-      PhoneNumber: '',
-      WebsiteUrl: '',
-      CompanyAddress: '',
-      Description: '',
-      ContactPersonName: '',
-      ContactPersonNumber: '',
-      TypeofTrips: '',
-      LicenseImageUrl: '',
-      LogoUrl: '',
-      CoverImageUrl: '',
-      acceptTerms: false,
-    });
-  } catch (error: unknown) {
-    console.error('Error submitting form:', error);
-    if (error instanceof Error) {
-      alert(error.message || t('getInTouch.submissionError'));
-    } else {
-      alert(t('getInTouch.submissionError'));
+    if (!formData.acceptTerms) {
+      alert(t('getInTouch.termsError'));
+      setIsSubmitting(false);
+      return;
     }
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+
+    try {
+      await submitTourismCompanyRequest(formData);
+      alert(t('Form submitted successfully'));
+      
+      // Reset form
+      setFormData({
+        CompanyName: '',
+        Owner: '',
+        Email: '',
+        CommercialRegistrationNumber: '',
+        PhoneNumber: '',
+        WebsiteUrl: '',
+        CompanyAddress: '',
+        Description: '',
+        ContactPersonName: '',
+        ContactPersonNumber: '',
+        TypeofTrips: '',
+        LicenseImageUrl: '',
+        LogoUrl: '',
+        CoverImageUrl: '',
+        acceptTerms: false,
+      });
+    } catch (error: unknown) {
+      console.error('Error submitting form:', error);
+      alert(
+        error instanceof Error 
+          ? error.message || t('getInTouch.submissionError')
+          : t('getInTouch.submissionError')
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className={`font-sans ${i18n.language === 'ar' ? 'text-right' : 'text-left'}`}>
       {/* Cover Image */}
@@ -303,7 +288,7 @@ const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
 
           {/* License Image URL */}
           <div className="mb-5">
-            <label>{t('getInTouch.licenseImage')} <span className="text-red-500">*</span></label>
+            <label>{t('License Image Link')} <span className="text-red-500">*</span></label>
             <input
               type="text"
               name="LicenseImageUrl"

@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const Hero = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchType, setSearchType] = useState('Travels'); // Default search type
+  const navigate = useNavigate();
 
   const handleSearch = () => {
     // Implement search logic here based on searchTerm and searchType
@@ -58,8 +60,15 @@ const Hero = () => {
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <div className="flex items-center justify-between space-x-8 overflow-x-auto py-4">
-          <CategoryButton icon="🏖️" label="Beaches" />
-          <CategoryButton icon="🏛️" label="Heritage" />
+          <CategoryButton 
+          icon="🏖️" 
+          label="Beaches" 
+          onClick={() => navigate('/beaches')}  />
+          <CategoryButton 
+            icon="🏛️" 
+            label="Heritage" 
+            onClick={() => navigate('/heritage')} 
+          />
           <CategoryButton icon="🏔️" label="Mountains" />
           <CategoryButton icon="🌆" label="Cities" />
           <CategoryButton icon="🏺" label="Museums" />
@@ -69,8 +78,17 @@ const Hero = () => {
   );
 };
 
-const CategoryButton = ({ icon, label }: { icon: string; label: string }) => (
-  <button className="flex flex-col items-center space-y-2 text-white hover:text-orange-500 transition-colors">
+interface CategoryButtonProps {
+  icon: string;
+  label: string;
+  onClick?: () => void;
+}
+
+const CategoryButton = ({ icon, label, onClick }: CategoryButtonProps) => (
+  <button 
+    onClick={onClick}
+    className="flex flex-col items-center space-y-2 text-white hover:text-orange-500 transition-colors"
+  >
     <span className="text-2xl">{icon}</span>
     <span className="text-sm font-medium">{label}</span>
   </button>

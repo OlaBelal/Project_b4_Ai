@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Star, ChevronLeft, ChevronRight, Search, SlidersHorizontal } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { getCompanies, Company } from '../services/api';
 import { fetchDiscountedTours } from '../services/travelService';
 import { Tour } from '../types';
 
-const addresses = ["All", "Cairo", "Giza", "Hurghada", "Sharm El Sheikh","Aswan", "Luxor", "Tanta"];
+const addresses = ["All", "Cairo", "Giza", "Hurghada", "Sharm El Sheikh", "Aswan", "Luxor", "Tanta"];
 
 interface UserInteraction {
   id: string;
@@ -25,8 +25,10 @@ const Companies = () => {
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [selectedAddress, setSelectedAddress] = useState('All');
+  const [sortOption, setSortOption] = useState<string>('');
   const [companies, setCompanies] = useState<Company[]>([]);
   const [totalCompanies, setTotalCompanies] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -89,9 +91,18 @@ const Companies = () => {
     const fetchCompanies = async () => {
       try {
         setLoading(true);
-        const { items, totalCount } = await getCompanies(currentPage, companiesPerPage);
+        const { items, totalCount, totalPages } = await getCompanies(
+  currentPage,
+  companiesPerPage,
+  sortOption,
+  selectedRating || undefined,
+  searchTerm,
+  verifiedOnly,
+  selectedAddress
+);
         setCompanies(items);
         setTotalCompanies(totalCount);
+        setTotalPages(totalPages);
       } catch (err) {
         setError('Failed to fetch companies');
         console.error('Error fetching companies:', err);
@@ -101,7 +112,7 @@ const Companies = () => {
     };
 
     fetchCompanies();
-  }, [currentPage]);
+  }, [currentPage, companiesPerPage, sortOption, selectedRating, searchTerm, verifiedOnly, selectedAddress]);
 
   useEffect(() => {
     const fetchDiscounts = async () => {
@@ -142,33 +153,12 @@ const Companies = () => {
     setTimeout(() => setIsAnimating(false), 300);
   };
 
-  const filteredCompanies = companies.filter(company => {
-    if (searchTerm && !company.companyName.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false;
-    }
-    
-    if (selectedRating && company.rating > selectedRating) {
-      return false;
-    }
-    
-    if (verifiedOnly && !company.verified) {
-      return false;
-    }
-    
-    if (selectedAddress !== 'All' && !company.address?.toLowerCase().includes(selectedAddress.toLowerCase())) {
-      return false;
-    }
-    
-    return true;
-  });
-
-  const totalPages = Math.ceil(totalCompanies / companiesPerPage);
-
   const resetFilters = () => {
     setSelectedRating(null);
     setVerifiedOnly(false);
     setSearchTerm('');
     setSelectedAddress('All');
+    setSortOption('');
     setCurrentPage(1);
   };
 
@@ -180,61 +170,6 @@ const Companies = () => {
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
-    const pageButtons = [];
-    const maxVisiblePages = 5;
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, currentPage + 2);
-
-    if (totalPages > maxVisiblePages) {
-      if (currentPage <= 3) {
-        endPage = maxVisiblePages;
-      } else if (currentPage >= totalPages - 2) {
-        startPage = totalPages - maxVisiblePages + 1;
-      }
-    }
-
-    if (startPage > 1) {
-      pageButtons.push(
-        <button
-          key={1}
-          onClick={() => handlePageChange(1)}
-          className={`px-3 py-1 border rounded ${1 === currentPage ? 'bg-orange-500 text-white' : 'hover:bg-gray-100'}`}
-        >
-          1
-        </button>
-      );
-      if (startPage > 2) {
-        pageButtons.push(<span key="start-ellipsis" className="px-2">...</span>);
-      }
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pageButtons.push(
-        <button
-          key={i}
-          onClick={() => handlePageChange(i)}
-          className={`px-3 py-1 border rounded ${i === currentPage ? 'bg-orange-500 text-white' : 'hover:bg-gray-100'}`}
-        >
-          {i}
-        </button>
-      );
-    }
-
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) {
-        pageButtons.push(<span key="end-ellipsis" className="px-2">...</span>);
-      }
-      pageButtons.push(
-        <button
-          key={totalPages}
-          onClick={() => handlePageChange(totalPages)}
-          className={`px-3 py-1 border rounded ${totalPages === currentPage ? 'bg-orange-500 text-white' : 'hover:bg-gray-100'}`}
-        >
-          {totalPages}
-        </button>
-      );
-    }
-
     return (
       <div className="flex items-center justify-center mt-8 gap-2">
         <button 
@@ -244,7 +179,30 @@ const Companies = () => {
         >
           Previous
         </button>
-        {pageButtons}
+        
+        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+          let pageNum;
+          if (totalPages <= 5) {
+            pageNum = i + 1;
+          } else if (currentPage <= 3) {
+            pageNum = i + 1;
+          } else if (currentPage >= totalPages - 2) {
+            pageNum = totalPages - 4 + i;
+          } else {
+            pageNum = currentPage - 2 + i;
+          }
+          
+          return (
+            <button
+              key={pageNum}
+              onClick={() => handlePageChange(pageNum)}
+              className={`px-3 py-1 border rounded ${pageNum === currentPage ? 'bg-orange-500 text-white' : 'hover:bg-gray-100'}`}
+            >
+              {pageNum}
+            </button>
+          );
+        })}
+        
         <button 
           onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
@@ -279,6 +237,14 @@ const Companies = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <h1 className="text-5xl font-bold text-[#DF6951] mb-4 font-yesteryear">
+      You're in Safe Hands
+    </h1>
+    <p className="text-lg text-gray-700 font-volkhov">
+      Book your next trip with trusted travel companies and travel worry-free.
+    </p>
+  </div>
       {/* Discounts Section */}
       <div className="mb-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Special Discounts</h2>
@@ -408,7 +374,7 @@ const Companies = () => {
               <h3 className="font-bold text-lg">Filters</h3>
               <button
                 onClick={resetFilters}
-                className="text-sm text-orange-500 hover:text-orange-700  font-bold"
+                className="text-sm text-orange-500 hover:text-orange-700 font-bold"
               >
                 Reset All
               </button>
@@ -429,7 +395,7 @@ const Companies = () => {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
               </div>
               
-              <div>
+              {/* <div>
                 <h3 className="font-semibold mb-2">Address</h3>
                 <select
                   value={selectedAddress}
@@ -443,7 +409,27 @@ const Companies = () => {
                     <option key={address} value={address}>{address}</option>
                   ))}
                 </select>
-              </div>
+              </div> */}
+
+              {/* <div>
+                <h3 className="font-semibold mb-2">Sort By</h3>
+                <select
+                  value={sortOption}
+                  onChange={(e) => {
+                    setSortOption(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="">Default</option>
+                  <option value="rating-desc">Highest Rating</option>
+                  <option value="rating-asc">Lowest Rating</option>
+                  <option value="name-asc">Name (A-Z)</option>
+                  <option value="name-desc">Name (Z-A)</option>
+                  <option value="date-desc">Newest First</option>
+                  <option value="date-asc">Oldest First</option>
+                </select>
+              </div> */}
 
               <div>
                 <h3 className="font-semibold mb-2">Maximum Rating</h3>
@@ -497,16 +483,30 @@ const Companies = () => {
         <div className="lg:w-3/4">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <h2 className="text-2xl font-bold text-gray-900">Our Partner Companies</h2>
+            <p className="text-gray-600">
+              Showing {companies.length} of {totalCompanies} companies
+              {currentPage > 1 && ` (Page ${currentPage} of ${totalPages})`}
+            </p>
           </div>
 
           <div className="space-y-6">
-            {filteredCompanies.length === 0 ? (
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+              </div>
+            ) : companies.length === 0 ? (
               <div className="text-center py-12">
                 <h3 className="text-xl font-semibold text-gray-700">No companies found</h3>
                 <p className="text-gray-500 mt-2">Try adjusting your filters or search criteria</p>
+                <button
+                  onClick={resetFilters}
+                  className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition-colors"
+                >
+                  Reset All Filters
+                </button>
               </div>
             ) : (
-              filteredCompanies.map((company) => (
+              companies.map((company) => (
                 <div key={company.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col md:flex-row hover:shadow-lg transition-shadow">
                   <div className="md:w-1/3 h-48 md:h-auto">
                     <img

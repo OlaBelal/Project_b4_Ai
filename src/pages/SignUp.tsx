@@ -101,7 +101,6 @@ const SignUp = () => {
         setIsLoading(true);
         const response = await authService.register({
           userName: formData.name.replace(/\s+/g, ''), 
-
           email: formData.email.trim(),
           password: formData.password
         });
@@ -115,9 +114,11 @@ const SignUp = () => {
           token: response.token
         };
         localStorage.setItem('currentUser', JSON.stringify(user));
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('isAuthenticated', 'true');
         
         // Redirect after successful registration
-        const redirectPath = location.state?.from?.pathname || "/AccountPage";
+        const redirectPath = location.state?.from?.pathname || "/account";
         navigate(redirectPath, { replace: true });
       } catch (error: any) {
         setApiError(error.message || t('signUp.errors.registrationFailed'));
@@ -135,23 +136,30 @@ const SignUp = () => {
         throw new Error(t('signUp.errors.noGoogleCredential'));
       }
       
+      console.log('Google credential received:', credentialResponse.credential);
+      
       const user = await authService.googleLogin(credentialResponse.credential);
+      console.log('User data from Google login:', user);
       
       // Store Google user data
       const completeUser = {
         id: user.id,
         name: user.name,
         email: user.email,
-        phone: '',
+        phone: user.phone || '',
         token: user.token,
         avatar: user.avatar
       };
+      
       localStorage.setItem('currentUser', JSON.stringify(completeUser));
+      localStorage.setItem('token', user.token);
+      localStorage.setItem('isAuthenticated', 'true');
       
       // Redirect after successful Google signup
-      const redirectPath = location.state?.from?.pathname || "/AccountPage";
+      const redirectPath = location.state?.from?.pathname || "/account";
       navigate(redirectPath, { replace: true });
     } catch (error: any) {
+      console.error('Google signup error:', error);
       setApiError(error.message || t('signUp.errors.googleSignUpFailed'));
     } finally {
       setIsLoading(false);
@@ -294,11 +302,12 @@ const SignUp = () => {
 
             {/* Google Sign Up Button */}
             <div className="mb-6">
-              <GoogleOAuthProvider clientId="YOUR_GOOGLE_CLIENT_ID">
+              <GoogleOAuthProvider clientId="822773664134-n09666thqoc67ee4rhkfjetb51ep0vg5.apps.googleusercontent.com">
                 <div className={`${isLoading ? 'opacity-70 pointer-events-none' : ''}`}>
                   <GoogleLogin
                     onSuccess={handleGoogleSignUp}
                     onError={() => {
+                      console.error('Google login failed');
                       setApiError(t('signUp.errors.googleSignUpFailed'));
                     }}
                     width="100%"

@@ -9,7 +9,8 @@ import TravelWithUs from './pages/TravelWithUs';
 import SignUp from "./pages/SignUp";
 import './styles/global.css';
 import LogIn from './pages/LogIn';
-import AccountPage from './pages/AccountPage';
+import Account from './pages/account';
+
 import ContactUsForm from './pages/ContactUsForm';
 import GetInTouch from './pages/GetInTouch';
 import CompaniesPage from './pages/CompaniesPage';
@@ -19,7 +20,7 @@ import PaymentFailed from "./pages/PaymentFailed";
 import Favorites from './pages/Favorites';
 import { FavoritesProvider } from './context/FavoritesContext';
 import Partners from './components/Partners';
-import Travels from './pages/Travels';
+
 import Companies from './pages/Companies';
 import Events from './pages/Events';
 import { setupWeeklySubmission } from './services/schedulerService';
@@ -31,7 +32,15 @@ import AllTours from './components/AllTours';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ChatbotProvider } from './context/ChatbotContext';
 import Chatbot from './components/Chatbot';
+
+
+import About from './ConstantsPages/About';
+import Beaches from './ConstantsPages/Beaches';
+import Heritage from './ConstantsPages/Heritage';
 import PyramidsPage from './ConstantsPages/PyramidsPage';
+import LuxorTemplePage from './ConstantsPages/LuxorTemple';
+import NuweibaPage from './ConstantsPages/NuweibaPage';
+import SiwaPage from './ConstantsPages/SiwaPage';
 
 // SignalR imports
 import { HubConnectionBuilder } from '@microsoft/signalr';
@@ -44,31 +53,7 @@ function App() {
     if (user) {
       setupWeeklySubmission(user.id);
     }
-
-    // Initialize SignalR connection
-    const initializeSignalR = async () => {
-      try {
-        const connection = new HubConnectionBuilder()
-          .withUrl('https://your-backend-url/chatHub')
-          .withAutomaticReconnect()
-          .build();
-
-        await connection.start();
-        console.log('SignalR Connected');
-
-        // Store connection in context or state management
-      } catch (err) {
-        console.error('SignalR Connection Error:', err);
-      }
-    };
-
-    initializeSignalR();
-
-    return () => {
-      // Cleanup SignalR connection if needed
-    };
   }, []);
-
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <UserProvider>
@@ -84,17 +69,31 @@ function App() {
                     <Route path="/travel-with-us" element={<TravelWithUs />} />
                     <Route path="/signup" element={<SignUp />} />
                     <Route path="/login" element={<LogIn />} />
-                    <Route path="/account" element={<AccountPage/>} />
+                    <Route path="/account" element={<Account />} />
+                    <Route path="/account/reset-password" element={<ResetPassword />} />
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/contact" element={<ContactUsForm />} />
                     <Route path="/GetInTouch" element={<GetInTouch />} />
                     <Route path="/companies/:companyId" element={<CompaniesPage />} />
                     <Route path="/partners" element={<Partners />} />
-                    <Route path="/travels" element={<Travels />} />
+                    
                     <Route path="/companies" element={<Companies />} />
                     <Route path="/events" element={<Events />} />
                     <Route path="/tours" element={<AllTours />} />
+
+                    <Route path="/nuweiba" element={<NuweibaPage />} />
+                    
+                    {/* Static pages */}
+                    <Route path="/about" element={<About />} />
+                    <Route path="/heritage" element={<Heritage />} />
                     <Route path="/pyramids" element={<PyramidsPage />} />
+                    <Route path="/luxor-temple" element={<LuxorTemplePage />} />
+                    <Route path="/siwa" element={<SiwaPage />} />
+                    <Route path="/heritage" element={<Heritage />} />
+                    <Route path="/beaches" element={<Beaches />} />
+
+                    {/* Protected routes */}
+
 
                     <Route element={<ProtectedRoute />}>
                       <Route path="/payment" element={<PaymentPage />} />

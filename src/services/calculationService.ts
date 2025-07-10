@@ -15,10 +15,7 @@ export const calculateTotal = (interaction: UserInteraction): number => {
     total += WEIGHTS.favourite;
   }
   
-  if (interaction.like) {
-    total += WEIGHTS.like;
-  }
-  
+ 
   if (interaction.booked) {
     total += WEIGHTS.booked;
   }

@@ -109,7 +109,10 @@ export interface Tour {
 }
 
 
-
+export interface Category {
+  id: number;
+  categoryName: string;
+}
 
 export interface Review {
   id: number;

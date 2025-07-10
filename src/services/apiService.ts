@@ -25,22 +25,39 @@ export const travelService = {
 export const interactionService = {
   sendInteractionsToAPI: async (userId: string): Promise<boolean> => {
     const interactions = getInteractions();
-    
-    if (interactions.length === 0) {
+    console.log("Raw interactions from localStorage:", interactions);
+
+    // Filter valid interactions that have required fields and matching userId
+    const validInteractions = interactions.filter((interaction: UserInteraction) => 
+      interaction.id && 
+      (typeof interaction.total === 'number' || typeof interaction.checkout === 'number') && 
+      interaction.userId === userId
+    ).map(interaction => ({
+      ...interaction,
+      total: interaction.total || interaction.checkout || 0
+    }));
+
+    console.log("Valid interactions after filtering and transformation:", validInteractions);
+
+    if (validInteractions.length === 0) {
+      console.log("No valid interactions to send");
       return false;
     }
-    
+
+    // Build the payload according to Swagger specification
     const data: UserInteractionForAPI = {
       id: userId,
-      userInteraction: interactions.map((interaction: UserInteraction) => ({
-        eventID: interaction.id,
-        type: interaction.type,
+      userInteraction: validInteractions.map(interaction => ({
+        id: interaction.id,
+        type: interaction.type || 'travel',
         total: interaction.total
       }))
     };
-    
+
+    console.log("Final data being sent to API:", JSON.stringify(data, null, 2));
+
     try {
-      const response = await fetch(`${API_BASE_URL}/UserInteraction`, {
+      const response = await fetch(`${API_BASE_URL}/Ai/userinteractions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -48,12 +65,18 @@ export const interactionService = {
         },
         body: JSON.stringify(data),
       });
-      
-      if (response.ok) {
-        clearInteractions();
-        return true;
+
+      const responseText = await response.text();
+      console.log("Response status:", response.status);
+      console.log("Response body:", responseText);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      return false;
+
+      console.log("Interactions submitted successfully");
+      clearInteractions();
+      return true;
     } catch (error) {
       console.error('Failed to send interactions:', error);
       return false;

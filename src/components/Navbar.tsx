@@ -45,7 +45,7 @@ const Navbar = () => {
           <div className="hidden md:flex items-center space-x-8 rtl:space-x-reverse">
 
             
-            <NavLink to="/travels" active={location.pathname === "/travels"}>
+            <NavLink to="/tours" active={location.pathname === "/tours"}>
               {t('navbar.travels')}
             </NavLink>
             <NavLink to="/companies" active={location.pathname === "/companies"}>
@@ -101,9 +101,18 @@ const Navbar = () => {
                   className="flex items-center space-x-2 rtl:space-x-reverse focus:outline-none"
 
                 >
-                  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
-                    <User size={18} className="text-orange-500" />
-                  </div>
+                  {currentUser?.avatar ? (
+  <img
+    src={currentUser.avatar}
+    alt="User avatar"
+    className="w-8 h-8 rounded-full object-cover"
+  />
+) : (
+  <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+    <User size={18} className="text-orange-500" />
+  </div>
+)}
+
                   <span className="text-sm font-medium">{currentUser.name}</span>
                 </button>
 
@@ -114,7 +123,7 @@ const Navbar = () => {
                       <p className="text-xs text-gray-500">{currentUser.email}</p>
                     </div>
                     <Link
-                      to="/AccountPage"
+                      to="/account"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-orange-50"
                       onClick={() => setIsProfileOpen(false)}
                     >
@@ -212,7 +221,7 @@ const Navbar = () => {
                   <p className="text-xs text-gray-500">{currentUser.email}</p>
                 </div>
                 <Link
-                  to="/AccountPage"
+                  to="/account"
                   className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-orange-500"
                   onClick={() => setIsMenuOpen(false)}
                 >

@@ -104,6 +104,7 @@ const LogIn = () => {
 
         const from = location.state?.from?.pathname || "/account";
         navigate(from, { replace: true });
+        window.location.reload();
       } catch (error: any) {
         setApiError(
           error.message || t('login.errors.loginFailed')
@@ -137,6 +138,7 @@ const LogIn = () => {
 
       const redirectPath = location.state?.from?.pathname || "/account";
       navigate(redirectPath, { replace: true });
+      window.location.reload();
     } catch (error: any) {
       setApiError(error.message || t('login.errors.googleLoginFailed'));
     } finally {
