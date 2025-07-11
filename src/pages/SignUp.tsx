@@ -105,16 +105,16 @@ const SignUp = () => {
           password: formData.password
         });
         
-        // Store user data
+        // Store user data with fallback values
         const user = {
-          id: response.id,
-          name: response.name,
-          email: response.email,
+          id: response.id || '',
+          name: response.name || formData.name.replace(/\s+/g, ''),
+          email: response.email || formData.email.trim(),
           phone: '',
-          token: response.token
+          token: response.token || ''
         };
         localStorage.setItem('currentUser', JSON.stringify(user));
-        localStorage.setItem('token', response.token);
+        localStorage.setItem('token', user.token);
         localStorage.setItem('isAuthenticated', 'true');
         
         // Redirect after successful registration
@@ -141,18 +141,18 @@ const SignUp = () => {
       const user = await authService.googleLogin(credentialResponse.credential);
       console.log('User data from Google login:', user);
       
-      // Store Google user data
+      // Store Google user data with fallback values
       const completeUser = {
-        id: user.id,
-        name: user.name,
-        email: user.email,
+        id: user.id || '',
+        name: user.name || '',
+        email: user.email || '',
         phone: user.phone || '',
-        token: user.token,
-        avatar: user.avatar
+        token: user.token || '',
+        avatar: user.avatar || ''
       };
       
       localStorage.setItem('currentUser', JSON.stringify(completeUser));
-      localStorage.setItem('token', user.token);
+      localStorage.setItem('token', completeUser.token);
       localStorage.setItem('isAuthenticated', 'true');
       
       // Redirect after successful Google signup

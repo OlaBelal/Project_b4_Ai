@@ -1,80 +1,174 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, MapPin, Users, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { authService } from '../services/authService';
 
-const events = [
-  {
-    id: 1,
-    title: "Sunset Desert Safari",
-    description: "Based on your interest in adventure travel, experience a magical evening in the desert with camel riding, sandboarding, and traditional dinner under the stars.",
-    date: "Mar 15, 2024",
-    location: "Sahara Desert",
-    duration: "6 hours",
-    groupSize: "8-12",
-    image: "https://images.unsplash.com/photo-1547234935-80c7145ec969?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    price: 89
-  },
-  {
-    id: 2,
-    title: "Nile Dinner Cruise",
-    description: "Perfect for couples! Enjoy a romantic evening cruise along the Nile with live entertainment and gourmet Egyptian cuisine.",
-    date: "Mar 18, 2024",
-    location: "Cairo",
-    duration: "4 hours",
-    groupSize: "2-30",
-    image: "https://images.unsplash.com/photo-1561501900-3701fa6a0864?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80",
-    price: 75
-  },
-  {
-    id: 3,
-    title: "Ancient Temples Photography Tour",
-    description: "Based on your photography interests, join our expert guide for the perfect photo opportunities at Luxor's ancient temples during golden hour.",
-    date: "Mar 20, 2024",
-    location: "Luxor",
-    duration: "5 hours",
-    groupSize: "6-10",
-    image: "https://demo-source.imgix.net/mountains.jpg",
-    price: 95
-  }
-];
+interface Travel {
+  id: number;
+  title: string;
+  description: string;
+  price: number;
+  startDate: string;
+  endDate: string;
+  departurePoint: string;
+  destinationCity: string;
+  availableSeats: number;
+  transportationType: string;
+  coverImageUrl: string;
+  amenities: string[];
+}
 
 const AITravel = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [direction, setDirection] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [travels, setTravels] = useState<Travel[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      handleNext();
-    }, 5000);
+    const fetchRecommendedTravels = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const userId = token ? authService.getUserIdFromToken() : null;
+        
+        if (!userId) {
+          throw new Error('User not authenticated');
+        }
 
-    return () => clearInterval(interval);
+        const response = await axios.get<Travel[]>(
+          `https://journeymate.runasp.net/api/Ai/recommend-travels/${userId}`,
+          {
+            params: {
+              numRecommendations: 5,
+              numHighestInteractions: 2
+            },
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        setTravels(response.data);
+      } catch (err) {
+        setError('Failed to fetch recommended travels');
+        console.error('Error fetching recommended travels:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecommendedTravels();
   }, []);
 
+  useEffect(() => {
+    if (travels.length > 0) {
+      const interval = setInterval(() => {
+        handleNext();
+      }, 5000);
+
+      return () => clearInterval(interval);
+    }
+  }, [travels]);
+
   const handleNext = () => {
-    if (isAnimating) return;
+    if (isAnimating || travels.length === 0) return;
     setDirection(1);
     setIsAnimating(true);
-    setCurrentIndex((prevIndex) => (prevIndex + 1) % events.length);
-    setTimeout(() => setIsAnimating(false), 300); // Reduced from 500ms to 300ms
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % travels.length);
+    setTimeout(() => setIsAnimating(false), 300);
   };
 
   const handlePrev = () => {
-    if (isAnimating) return;
+    if (isAnimating || travels.length === 0) return;
     setDirection(-1);
     setIsAnimating(true);
-    setCurrentIndex((prevIndex) => (prevIndex - 1 + events.length) % events.length);
-    setTimeout(() => setIsAnimating(false), 300); // Reduced from 500ms to 300ms
+    setCurrentIndex((prevIndex) => (prevIndex - 1 + travels.length) % travels.length);
+    setTimeout(() => setIsAnimating(false), 300);
   };
 
   const handleDotClick = (index: number) => {
-    if (isAnimating || index === currentIndex) return;
+    if (isAnimating || index === currentIndex || travels.length === 0) return;
     setDirection(index > currentIndex ? 1 : -1);
     setIsAnimating(true);
     setCurrentIndex(index);
-    setTimeout(() => setIsAnimating(false), 300); // Reduced from 500ms to 300ms
+    setTimeout(() => setIsAnimating(false), 300);
   };
 
-  const currentEvent = events[currentIndex];
+  const handleViewDetails = (travelId: number) => {
+    const travel = travels.find(t => t.id === travelId);
+    if (!travel) return;
+    
+    navigate('/travel-with-us', { state: { tour: travel } });
+  };
+
+  if (loading) {
+    return (
+      <section className="py-16 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading recommended travels...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="py-16 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center py-12">
+            <div className="text-red-500 mb-4">
+              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900">{error}</h3>
+            <p className="mt-2 text-gray-600">Please try again later</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (travels.length === 0) {
+    return (
+      <section className="py-16 bg-gradient-to-b from-white to-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center py-12">
+            <div className="text-gray-400 mb-4">
+              <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900">No recommended travels found</h3>
+            <p className="mt-2 text-gray-600">Complete your profile to get personalized recommendations</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const currentTravel = travels[currentIndex];
+
+  // Helper function to format date
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  // Calculate duration in days
+  const calculateDuration = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return `${diffDays} days`;
+  };
 
   return (
     <section className="py-16 bg-gradient-to-b from-white to-gray-50 overflow-hidden">
@@ -102,53 +196,67 @@ const AITravel = () => {
           >
             <div className="relative h-[400px] lg:h-[500px] rounded-xl overflow-hidden">
               <img
-                src={currentEvent.image}
-                alt={currentEvent.title}
+                src={currentTravel.coverImageUrl || 'https://images.unsplash.com/photo-1501785888041-af3ef285b470?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80'}
+                alt={currentTravel.title}
                 className="w-full h-full object-cover transition-transform duration-300 ease-out transform hover:scale-105"
               />
               <div className="absolute top-4 right-4 bg-white px-4 py-2 rounded-full text-lg font-semibold text-orange-500">
-                ${currentEvent.price}
+                ${currentTravel.price}
               </div>
             </div>
             
             <div className="p-6 lg:p-8">
-              <h3 className="text-3xl font-bold text-gray-900 mb-4">{currentEvent.title}</h3>
-              <p className="text-gray-600 text-lg mb-8">{currentEvent.description}</p>
+              <h3 className="text-3xl font-bold text-gray-900 mb-4">{currentTravel.title}</h3>
+              <p className="text-gray-600 text-lg mb-8">{currentTravel.description}</p>
               
               <div className="grid grid-cols-2 gap-6 mb-8">
                 <div className="flex items-center text-gray-600">
                   <Calendar size={24} className="mr-3 text-orange-500" />
                   <div>
                     <p className="font-semibold">Date</p>
-                    <span className="text-sm">{currentEvent.date}</span>
+                    <span className="text-sm">
+                      {formatDate(currentTravel.startDate)} - {formatDate(currentTravel.endDate)}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center text-gray-600">
                   <MapPin size={24} className="mr-3 text-orange-500" />
                   <div>
                     <p className="font-semibold">Location</p>
-                    <span className="text-sm">{currentEvent.location}</span>
+                    <span className="text-sm">
+                      {currentTravel.departurePoint} to {currentTravel.destinationCity}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center text-gray-600">
                   <Clock size={24} className="mr-3 text-orange-500" />
                   <div>
                     <p className="font-semibold">Duration</p>
-                    <span className="text-sm">{currentEvent.duration}</span>
+                    <span className="text-sm">
+                      {calculateDuration(currentTravel.startDate, currentTravel.endDate)}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center text-gray-600">
                   <Users size={24} className="mr-3 text-orange-500" />
                   <div>
-                    <p className="font-semibold">Group Size</p>
-                    <span className="text-sm">{currentEvent.groupSize}</span>
+                    <p className="font-semibold">Available Seats</p>
+                    <span className="text-sm">{currentTravel.availableSeats}</span>
                   </div>
                 </div>
               </div>
               
-              <button className="w-full bg-orange-500 text-white py-3 px-6 rounded-lg hover:bg-orange-600 transition-all duration-200 text-lg font-semibold transform hover:scale-[1.02]">
-                Book Now - ${currentEvent.price}
-              </button>
+              <div className="flex space-x-4">
+                <button 
+                  className="flex-1 bg-orange-500 text-white py-3 px-6 rounded-lg hover:bg-orange-600 transition-all duration-200 text-lg font-semibold transform hover:scale-[1.02]"
+                  onClick={() => handleViewDetails(currentTravel.id)}
+                >
+                  View Details
+                </button>
+                <button className="flex-1 bg-white border border-orange-500 text-orange-500 py-3 px-6 rounded-lg hover:bg-orange-50 transition-all duration-200 text-lg font-semibold transform hover:scale-[1.02]">
+                  Book Now
+                </button>
+              </div>
             </div>
           </div>
 
@@ -170,7 +278,7 @@ const AITravel = () => {
           </div>
 
           <div className="flex justify-center mt-6 space-x-3">
-            {events.map((_, index) => (
+            {travels.map((_, index) => (
               <button
                 key={index}
                 onClick={() => handleDotClick(index)}

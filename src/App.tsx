@@ -32,7 +32,7 @@ import AllTours from './components/AllTours';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { ChatbotProvider } from './context/ChatbotContext';
 import Chatbot from './components/Chatbot';
-
+import Mountains from './ConstantsPages/Mountains';
 
 import About from './ConstantsPages/About';
 import Beaches from './ConstantsPages/Beaches';
@@ -40,20 +40,33 @@ import Heritage from './ConstantsPages/Heritage';
 import PyramidsPage from './ConstantsPages/PyramidsPage';
 import LuxorTemplePage from './ConstantsPages/LuxorTemple';
 import NuweibaPage from './ConstantsPages/NuweibaPage';
+import Cities from './ConstantsPages/Cities';
 import SiwaPage from './ConstantsPages/SiwaPage';
-
-// SignalR imports
+import { extractUserIdFromToken } from './services/authService';
 import { HubConnectionBuilder } from '@microsoft/signalr';
 
 const GOOGLE_CLIENT_ID = '822773664134-n09666thqoc67ee4rhkfjetb51ep0vg5.apps.googleusercontent.com';
 
 function App() {
   useEffect(() => {
-    const user = authService.getCurrentUser();
-    if (user) {
-      setupWeeklySubmission(user.id);
+  const initializeUserServices = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const userId = token ? extractUserIdFromToken(token) : null;
+
+      if (userId) {
+        console.log('Setting up weekly submission for user:', userId);
+        setupWeeklySubmission(userId);
+      } else {
+        console.log('No authenticated user found - skipping weekly submission setup');
+      }
+    } catch (error) {
+      console.error('Error in user service initialization:', error);
     }
-  }, []);
+  };
+
+  initializeUserServices();
+}, []);
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <UserProvider>
@@ -91,6 +104,10 @@ function App() {
                     <Route path="/siwa" element={<SiwaPage />} />
                     <Route path="/heritage" element={<Heritage />} />
                     <Route path="/beaches" element={<Beaches />} />
+                    <Route path="/mountains" element={<Mountains />} />
+                    <Route path="/cities" element={<Cities />} />
+
+                    {/* Fallback route for unmatched paths */}
 
                     {/* Protected routes */}
 

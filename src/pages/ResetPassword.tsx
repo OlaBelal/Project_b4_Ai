@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { authService } from "../services/authService";
 
 export default function ResetPassword() {
@@ -9,6 +8,7 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState({ text: "", type: "" });
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   // Check link validity on page load
@@ -30,6 +30,8 @@ export default function ResetPassword() {
   // Password reset handler
   const handleReset = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
+    setMessage({ text: "", type: "" });
 
     const email = searchParams.get("email");
     const token = searchParams.get("token");
@@ -40,6 +42,7 @@ export default function ResetPassword() {
         text: "Reset information is incomplete (email and token required)",
         type: "error"
       });
+      setIsLoading(false);
       return;
     }
 
@@ -49,6 +52,7 @@ export default function ResetPassword() {
         text: "Passwords do not match",
         type: "error"
       });
+      setIsLoading(false);
       return;
     }
 
@@ -58,39 +62,31 @@ export default function ResetPassword() {
         text: "Password must be at least 8 characters with letters, numbers, and special characters",
         type: "error"
       });
+      setIsLoading(false);
       return;
     }
 
     try {
       // Send reset request to server
-      const response = await axios.post(
-        "https://journeymate.runasp.net/api/Auth/resetpassword",
-        {
-          email: email,
-          token: token,
-          newPassword: newPassword
-        },
-        {
-          headers: {
-            "Content-Type": "application/json"
-          }
-        }
-      );
-
+      await authService.resetPassword(email, token, newPassword);
+      
       // On success
-      if (response.status === 200) {
-        setMessage({
-          text: "Password reset successfully! You can now login",
-          type: "success"
-        });
-        setTimeout(() => navigate("/login"), 3000);
-      }
+      setMessage({
+        text: "Password reset successfully! Redirecting to login...",
+        type: "success"
+      });
+      
+      // Redirect after 2 seconds
+      setTimeout(() => navigate("/login"), 2000);
     } catch (error: any) {
       // Error handling
+      console.error("Reset password error:", error);
       setMessage({
-        text: error.response?.data?.message || "Error resetting password",
+        text: error.response?.data?.message || error.message || "Error resetting password. Please try again.",
         type: "error"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -144,11 +140,13 @@ export default function ResetPassword() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#DF6951]"
                   required
                   minLength={8}
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={togglePasswordVisibility}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600"
+                  disabled={isLoading}
                 >
                   {showPassword ? "Hide" : "Show"}
                 </button>
@@ -171,11 +169,13 @@ export default function ResetPassword() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#DF6951]"
                   required
                   minLength={8}
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
                   onClick={togglePasswordVisibility}
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-600"
+                  disabled={isLoading}
                 >
                   {showPassword ? "Hide" : "Show"}
                 </button>
@@ -185,9 +185,12 @@ export default function ResetPassword() {
             {/* Reset Password Button */}
             <button
               type="submit"
-              className="w-full py-3 bg-[#DF6951] text-white rounded-lg shadow-md hover:bg-[#C6533E] transition-colors text-lg font-medium"
+              className={`w-full py-3 bg-[#DF6951] text-white rounded-lg shadow-md hover:bg-[#C6533E] transition-colors text-lg font-medium ${
+                isLoading ? "opacity-70 cursor-not-allowed" : ""
+              }`}
+              disabled={isLoading}
             >
-              Reset Password
+              {isLoading ? "Resetting..." : "Reset Password"}
             </button>
 
             {/* Back to Login Link */}
@@ -197,6 +200,7 @@ export default function ResetPassword() {
                 type="button"
                 onClick={() => navigate("/login")}
                 className="text-[#DF6951] hover:text-[#C6533E] font-bold"
+                disabled={isLoading}
               >
                 Log in
               </button>

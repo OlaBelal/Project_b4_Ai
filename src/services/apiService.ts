@@ -28,14 +28,16 @@ export const interactionService = {
     console.log("Raw interactions from localStorage:", interactions);
 
     // Filter valid interactions that have required fields and matching userId
-    const validInteractions = interactions.filter((interaction: UserInteraction) => 
-      interaction.id && 
-      (typeof interaction.total === 'number' || typeof interaction.checkout === 'number') && 
-      interaction.userId === userId
-    ).map(interaction => ({
-      ...interaction,
-      total: interaction.total || interaction.checkout || 0
-    }));
+    const validInteractions = interactions
+      .filter((interaction: UserInteraction) => {
+        // Check if interaction has an id and belongs to the current user
+        return interaction.id && interaction.userId === userId;
+      })
+      .map(interaction => ({
+        id: interaction.id,
+        type: interaction.type || 'travel',
+        total: interaction.total || interaction.checkout || 0
+      }));
 
     console.log("Valid interactions after filtering and transformation:", validInteractions);
 
@@ -47,11 +49,7 @@ export const interactionService = {
     // Build the payload according to Swagger specification
     const data: UserInteractionForAPI = {
       id: userId,
-      userInteraction: validInteractions.map(interaction => ({
-        id: interaction.id,
-        type: interaction.type || 'travel',
-        total: interaction.total
-      }))
+      userInteraction: validInteractions
     };
 
     console.log("Final data being sent to API:", JSON.stringify(data, null, 2));

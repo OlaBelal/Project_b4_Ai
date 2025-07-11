@@ -69,8 +69,8 @@ const Hero = () => {
             label="Heritage" 
             onClick={() => navigate('/heritage')} 
           />
-          <CategoryButton icon="🏔️" label="Mountains" />
-          <CategoryButton icon="🌆" label="Cities" />
+          <CategoryButton icon="🏔️" label="Mountains" onClick={() => navigate('/mountains')}  />
+          <CategoryButton icon="🌆" label="Cities"  onClick={() => navigate('/cities')}/>
           <CategoryButton icon="🏺" label="Museums" />
         </div>
       </div>

@@ -6,7 +6,7 @@ import travelImage2 from "../assets/images/loginbag.jpg";
 import { authService } from "../services/authService";
 
 interface Errors {
-  email?: string;
+  username?: string;
   password?: string;
 }
 
@@ -21,7 +21,7 @@ const LogIn = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [formData, setFormData] = useState({
-    email: "",
+    username: "",
     password: "",
   });
 
@@ -34,15 +34,15 @@ const LogIn = () => {
   };
 
   const handleForgotPassword = async () => {
-    if (!formData.email) {
-      setErrors({ ...errors, email: t('login.errors.emailRequiredForReset') });
+    if (!formData.username) {
+      setErrors({ ...errors, username: t('login.errors.usernameRequiredForReset') });
       return;
     }
 
     try {
       setIsLoading(true);
-      await authService.forgotPassword(formData.email);
-      alert(t('login.resetPasswordSent', { email: formData.email }));
+      await authService.forgotPassword(formData.username);
+      alert(t('login.resetPasswordSent', { username: formData.username }));
     } catch (error: any) {
       setApiError(error.message || t('login.errors.resetFailed'));
     } finally {
@@ -67,10 +67,8 @@ const LogIn = () => {
   const validateForm = (): boolean => {
     const newErrors: Errors = {};
 
-    if (!formData.email.trim()) {
-      newErrors.email = t('login.errors.emailRequired');
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = t('login.errors.invalidEmail');
+    if (!formData.username.trim()) {
+      newErrors.username = t('login.errors.usernameRequired');
     }
 
     if (!formData.password) {
@@ -90,9 +88,8 @@ const LogIn = () => {
     if (validateForm()) {
       try {
         setIsLoading(true);
-        const user = await authService.login(formData.email, formData.password);
+        const user = await authService.login(formData.username, formData.password);
 
-        // Store complete user data in localStorage
         const completeUser = {
           id: user.id,
           name: user.name,
@@ -106,9 +103,7 @@ const LogIn = () => {
         navigate(from, { replace: true });
         window.location.reload();
       } catch (error: any) {
-        setApiError(
-          error.message || t('login.errors.loginFailed')
-        );
+        setApiError(error.message || t('login.errors.loginFailed'));
       } finally {
         setIsLoading(false);
       }
@@ -125,7 +120,6 @@ const LogIn = () => {
 
       const user = await authService.googleLogin(credentialResponse.credential);
 
-      // Store complete user data in localStorage
       const completeUser = {
         id: user.id,
         name: user.name,
@@ -174,27 +168,27 @@ const LogIn = () => {
           )}
 
           <form className="w-full" onSubmit={handleSubmit}>
-            {/* Email Field */}
+            {/* Username Field */}
             <div className="mb-4">
-              <label htmlFor="email" className="block mb-2 text-gray-700">
-                {t('login.emailLabel')}
+              <label htmlFor="username" className="block mb-2 text-gray-700">
+                {t('Name')}
               </label>
               <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
+                type="text"
+                id="username"
+                name="username"
+                value={formData.username}
                 onChange={handleChange}
                 className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 ${
-                  errors.email
+                  errors.username
                     ? "border-red-500 focus:ring-red-200"
                     : "border-gray-300 focus:ring-[#DF6951]"
                 }`}
                 disabled={isLoading}
-                placeholder={t('login.emailPlaceholder')}
+                placeholder={t('login.usernamePlaceholder')}
               />
-              {errors.email && (
-                <p className="text-red-500 text-xs mt-1">{errors.email}</p>
+              {errors.username && (
+                <p className="text-red-500 text-xs mt-1">{errors.username}</p>
               )}
             </div>
 

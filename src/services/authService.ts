@@ -8,6 +8,7 @@ interface AuthResponse {
   userId?: string;
   userName?: string;
   email?: string;
+  emailorNumber?: string;
   token?: string;
   message?: string;
 }
@@ -21,7 +22,6 @@ interface User {
   avatar?: string;
 }
 
-// دالة مساعدة لفك تشفير JWT
 function decodeJWT(token: string): any {
   const base64Url = token.split('.')[1];
   const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
@@ -33,6 +33,15 @@ function decodeJWT(token: string): any {
   );
   return JSON.parse(jsonPayload);
 }
+
+export const extractUserIdFromToken = (token: string): string | null => {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || null;
+  } catch {
+    return null;
+  }
+};
 
 export const authService = {
   register: async (userData: { 
@@ -74,21 +83,29 @@ export const authService = {
     }
   },
 
-  login: async (userNameOrEmail: string, password: string): Promise<User> => {
+  login: async (userName: string, password: string): Promise<User> => {
     try {
-      const response = await axios.post<AuthResponse>(`${API_BASE_URL}/login`, {
-        userName: userNameOrEmail,
-        password
-      });
+      const response = await axios.post<AuthResponse>(
+        `${API_BASE_URL}/login`,
+        {
+          userName,
+          password
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
       if (!response.data || !response.data.token) {
         throw new Error(response.data?.message || 'Login failed');
       }
 
       const user: User = {
-        id: response.data.userId || Date.now().toString(),
-        name: response.data.userName || userNameOrEmail,
-        email: response.data.email || '',
+        id: response.data.userId || '',
+        name: response.data.userName || userName,
+        email: response.data.emailorNumber || '',
         token: response.data.token
       };
       
@@ -128,14 +145,27 @@ export const authService = {
   },
 
   getCurrentUser: (): User | null => {
-    const userJson = localStorage.getItem('currentUser');
-    if (!userJson) return null;
-    
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+
     try {
-      return JSON.parse(userJson);
-    } catch (error) {
-      console.error('Error parsing user data:', error);
-      return null;
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      return {
+        id: payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"],
+        name: payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname"],
+        email: payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"],
+        token: token
+      };
+    } catch {
+      const userJson = localStorage.getItem('currentUser');
+      if (!userJson) return null;
+      
+      try {
+        return JSON.parse(userJson);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        return null;
+      }
     }
   },
 
@@ -169,11 +199,18 @@ export const authService = {
 
   resetPassword: async (email: string, token: string, newPassword: string): Promise<void> => {
     try {
-      const response = await axios.post(`${API_BASE_URL}/resetpassword`, {
-        email,
-        token,
-        newPassword
-      });
+      const response = await axios.post(
+        `${API_BASE_URL}/resetpassword?token=${encodeURIComponent(token)}`,
+        {
+          email,
+          newPassword
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
 
       if (response.status === 200) {
         localStorage.removeItem("resetEmail");
@@ -227,8 +264,8 @@ export const authService = {
       let errorMessage = 'Google login failed';
       if (error.response) {
         errorMessage = error.response.data?.message || 
-                       JSON.stringify(error.response.data) || 
-                       'Google login failed with server error';
+                     JSON.stringify(error.response.data) || 
+                     'Google login failed with server error';
       } else if (error.request) {
         errorMessage = 'No response received from server';
       }
@@ -287,37 +324,11 @@ export const authService = {
     }
   },
 
-  // الدالة المضافة لاستخراج ID المستخدم من التوكن
-getUserIdFromToken: (): string | null => {
-  const token = localStorage.getItem('token');
-  if (!token) return null;
-
-  try {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    const payload = JSON.parse(jsonPayload);
-
-    // ← دي اللي الباك اند بيستخدمها غالباً
-    return payload['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
-      || payload['sub']
-      || null;
-
-  } catch (error) {
-    console.error('Failed to decode token', error);
-    return null;
+  getUserIdFromToken: (): string | null => {
+    return extractUserIdFromToken(localStorage.getItem('token') || '');
   }
-}
-
-
 };
 
-// دالة لإنشاء هيدر التخويل
 export const getAuthHeader = () => {
   const token = localStorage.getItem('token');
   return {
